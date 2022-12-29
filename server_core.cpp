@@ -188,13 +188,13 @@ bool server_socket::process_get(int target_sock_id) {
         send(target_sock_id,"null",5,MSG_NOSIGNAL);
         return false;
     }
-    if(!send_header(target_sock_id, sizeof(uint32_t) + key.size(), 5))
+    uint32_t value_size = value.size();
+    if(!send_header(target_sock_id, sizeof(uint32_t) + value_size, 5))
     {
         log(error,"head数据发送失败！",target_sock_id);
         return false;
     }
     log(info,"head数据发送成功！",target_sock_id);
-    uint32_t value_size = value.size();
     usleep(300000);
     if(send(target_sock_id,&value_size,4,MSG_NOSIGNAL)!=4)
     {
