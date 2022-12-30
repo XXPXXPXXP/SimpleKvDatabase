@@ -70,7 +70,7 @@ bool database::read_from_file() {
             break;
         else
         {
-            keys_on_file.read(key.data(),size);
+            keys_on_file.read(reinterpret_cast<char *>(&key),size);
         }
 
         keys.emplace_back(key);

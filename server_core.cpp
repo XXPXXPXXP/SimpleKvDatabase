@@ -84,7 +84,6 @@ bool server_socket::start_listen() {
                     while (recv(tigger_sock_id,buff,1,MSG_PEEK))//判断socket是否结束
                     {
                         log(info, "连接已成功建立!");
-
                         //准备读取header数据
                         uint32_t magic_number, size, type, rubbish;
 
@@ -235,7 +234,7 @@ bool server_socket::process_delete(int target_sock_id) {
         log(error, "发送head失败!");
         return false;
     }
-    usleep(300000);
+    usleep(500000);
     send_safe(target_sock_id, &result, 1, MSG_NOSIGNAL);
     return true;
 }
@@ -320,6 +319,7 @@ bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t
      */
     bool result;
     result = send_safe(target_sock_id, &magic_number, 4, MSG_NOSIGNAL);
+    usleep(1000);
     /*
      * field: Size(head)
      * size: 4 bytes
@@ -327,8 +327,11 @@ bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t
      * description: body的大小
      */
     result = result && send_safe(target_sock_id, &full_size, 4, MSG_NOSIGNAL);
+    usleep(1000);
     result = result && send_safe(target_sock_id, &type, 4, MSG_NOSIGNAL);
+    usleep(1000);
     result = result && send_safe(target_sock_id, &padding, 4, MSG_NOSIGNAL);
+    usleep(1000);
     return result;
 }
 
