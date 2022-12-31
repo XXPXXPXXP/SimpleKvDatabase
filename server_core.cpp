@@ -75,13 +75,13 @@ bool server_socket::start_listen() {
                     return false;
                 }
                 if(tigger_list[i].ident==sock_id){
-                    int tigger_sock_id = accept(sock_id,(struct sockaddr*)&socket_ip_config,&len);	// 传入的主机地址
+                    int tigger_sock_id = accept(sock_id, nullptr, nullptr);	// 传入的主机地址
                     if(tigger_sock_id==-1){
                         log(error,"accept error!");
                         return false;
                     }
                     char * buff = (char *)malloc(10);
-                    while (recv(tigger_sock_id,buff,1,MSG_PEEK))//判断socket是否结束
+                    while (recv(tigger_sock_id,buff,1,MSG_PEEK)>0)//判断socket是否结束
                     {
                         log(info, "连接已成功建立!");
                         //准备读取header数据
@@ -167,7 +167,7 @@ bool server_socket::process_get(int target_sock_id) {
     read(target_sock_id,&size,4);
     std::string key;
     key.resize(size);
-    long real_size = read(target_sock_id,&key,size);
+    long real_size = read(target_sock_id,const_cast<char *>(key.data()),size);
     /* 这里不知道为什么要用常转换 */
     if(real_size < 0)
     {
@@ -194,13 +194,13 @@ bool server_socket::process_get(int target_sock_id) {
         return false;
     }
     log(info,"head数据发送成功！",target_sock_id);
-    usleep(300000);
+    //usleep(300000);
     if(send(target_sock_id,&value_size,4,MSG_NOSIGNAL)!=4)
     {
         log(error,"body:size数据发送失败!");
         return false;
     }
-    if (send(target_sock_id,&value,value_size,MSG_NOSIGNAL)!=value_size)
+    if (send(target_sock_id,value.data(),value_size,MSG_NOSIGNAL)!=value_size)
     {
         log(error,"body:value数据发送失败!");
         return false;
@@ -219,7 +219,7 @@ bool server_socket::process_delete(int target_sock_id) {
     }
     std::string target_key;
     target_key.resize(size);
-    if(read(target_sock_id,&target_key,size)!=size)
+    if(read(target_sock_id,const_cast<char *>(target_key.data()),size)!=size)
     {
         log(error,"读取key内容失败!");
         return false;
@@ -234,7 +234,7 @@ bool server_socket::process_delete(int target_sock_id) {
         log(error, "发送head失败!");
         return false;
     }
-    usleep(500000);
+    //usleep(500000);
     send_safe(target_sock_id, &result, 1, MSG_NOSIGNAL);
     return true;
 }
@@ -262,7 +262,7 @@ bool server_socket::process_add(int target_sock_id) {
         return false;
     }
     target_key.resize(key_size);
-    if (read(target_sock_id,&target_key,key_size)<0)
+    if (read(target_sock_id,const_cast<char *>(target_key.data()),key_size)<0)
     {
         log(error,"body:key读取失败！",target_sock_id);
         //这里函数会退出，所以这里资源会被自动回收。固不再手动回收资源
@@ -274,7 +274,7 @@ bool server_socket::process_add(int target_sock_id) {
             return false;
         }
     target_value.resize(value_size);
-    if (read(target_sock_id,&target_value,value_size)<0)
+    if (read(target_sock_id,const_cast<char *>(target_value.data()),value_size)<0)
     {
         log(error,"body:value读取失败!",target_sock_id);
         return false;
@@ -285,7 +285,8 @@ bool server_socket::process_add(int target_sock_id) {
         log(info,"键值对成功保存!",target_sock_id);
         send_header(target_sock_id,1,3);
         bool status = true;
-        usleep(100000);
+        //
+        // usleep(100000);
         send_safe(target_sock_id, &status, 1, MSG_NOSIGNAL);
         logh(info);
         printf("key:%s\tvalue:%s\n",target_key.c_str(),target_value.c_str());
@@ -319,7 +320,7 @@ bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t
      */
     bool result;
     result = send_safe(target_sock_id, &magic_number, 4, MSG_NOSIGNAL);
-    usleep(1000);
+    //usleep(1000);
     /*
      * field: Size(head)
      * size: 4 bytes
@@ -327,11 +328,11 @@ bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t
      * description: body的大小
      */
     result = result && send_safe(target_sock_id, &full_size, 4, MSG_NOSIGNAL);
-    usleep(1000);
+    //usleep(1000);
     result = result && send_safe(target_sock_id, &type, 4, MSG_NOSIGNAL);
-    usleep(1000);
+    //usleep(1000);
     result = result && send_safe(target_sock_id, &padding, 4, MSG_NOSIGNAL);
-    usleep(1000);
+    //usleep(1000);
     return result;
 }
 

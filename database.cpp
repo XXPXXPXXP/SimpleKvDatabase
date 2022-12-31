@@ -83,7 +83,7 @@ bool database::read_from_file() {
         else
         {
             value.resize(size);
-            keys_on_file.read(value.data(), size);
+            keys_on_file.read(const_cast<char *>(value.data()), size);
         }
         values.emplace_back(value);
         logh(info);

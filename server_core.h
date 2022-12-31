@@ -9,14 +9,16 @@
 #include <arpa/inet.h>
 /* inet.h 使用的是MacOSX13.0.sdk内置的版本 */
 #include <netinet/in.h>
-#include <sys/event.h>
+#include <kqueue/sys/event.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <MacTypes.h>
+#include <string>
+#include <cstring>
+//#include <MacTypes.h>
 #include <deque>
 /* macOS搞了另一套东西来实现epoll */
 #include <thread>
-
+#include <signal.h>
 enum log_level {info,warning,error};
 void log(enum log_level level,const std::string& context);
 void log(enum log_level level, const std::string &context,int id);
