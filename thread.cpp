@@ -2,7 +2,10 @@
 // Created by 徐鑫平 on 2022/12/29.
 //
 #include "thread.h"
-void * threads_pool::thread_accept(void *args) {
+void * threads_pool::thread_accept(std::vector<void *> args) {
+    auto * _this = reinterpret_cast<threads_pool *>(args.at(0));
+    auto server = reinterpret_cast<server_socket *>(args.at(1));
+    auto wait_list = reinterpret_cast<std::vector<int> *>(args.at(2));
 
     return nullptr;
 }

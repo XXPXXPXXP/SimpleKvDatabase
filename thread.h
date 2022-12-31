@@ -13,6 +13,6 @@ class threads_pool {
 public:
     void create_thread_pool(int max_thread, server_socket *server);
     int thread_worker(server_socket *, std::vector<int> &wait_list);
-    static void * thread_accept(void *args);
+    static void * thread_accept(std::vector<void *> args);
 };
 #endif //FINAL_PROJECT_THREAD_H
