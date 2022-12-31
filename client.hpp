@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 /* inet.h 使用的是MacOSX13.0.sdk内置的版本 */
 #include <netinet/in.h>
-#include <sys/event.h>
+//#include <sys/event.h>
 #include <sys/types.h>
 #include <unistd.h>
 /* macOS搞了另一套东西来实现epoll */

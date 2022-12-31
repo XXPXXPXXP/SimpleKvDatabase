@@ -12,7 +12,6 @@ int main(){
     std::cout << "connection:"<<i<<std::endl;
     std::string key = "test",value="test_1";
     send_header(sock,key.size()+value.size()+8,MSG_DONTWAIT);
-    usleep(100000);
     send_body_put(sock,key,value);
     close(sock);
     sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -20,7 +19,6 @@ int main(){
     std::cout << "connection:"<<i<<std::endl;
     key="fuck",value="true";
     send_header(sock,key.size()+value.size()+8,MSG_DONTWAIT);
-   // usleep(100000);
     send_body_put(sock,key,value);
     close(sock);
     sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -28,7 +26,6 @@ int main(){
     std::cout << "connection:"<<i<<std::endl;
     key = "test";
     send_header(sock,key.size()+4,2);
-   // usleep(100000);
     send_body_get(sock,key);
     std::cout<<"end"<<std::endl;
 }

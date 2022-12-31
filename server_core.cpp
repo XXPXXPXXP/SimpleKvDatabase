@@ -21,6 +21,8 @@ bool server_socket::init(short port, database &datas) {
         return false;
     }
     /* 创建基本的socket */
+    int opt_code = 1;
+    setsockopt(sock_id,SOL_SOCKET,SO_REUSEADDR,(const void *)&opt_code,sizeof(opt_code));
     memset(&socket_ip_config, 0, sizeof(socket_ip_config)); //对地址结构体填充0,避免无关数据干扰
     socket_ip_config.sin_family = AF_INET;//IPv4
     socket_ip_config.sin_port = htons(port);
@@ -51,7 +53,7 @@ bool server_socket::start_listen() {
         return false;
     }
     struct kevent *watch_list,*tigger_list;
-    socklen_t len;
+    socklen_t len = sizeof(socket_ip_config);
     watch_list = (struct kevent*)malloc(sizeof(struct kevent));
     tigger_list = (struct kevent*)malloc(sizeof(struct kevent) * 100);
     EV_SET(watch_list,sock_id,EVFILT_READ,EV_ADD|EV_ENABLE,0,0,0);	//注册事件
@@ -75,7 +77,7 @@ bool server_socket::start_listen() {
                     return false;
                 }
                 if(tigger_list[i].ident==sock_id){
-                    int tigger_sock_id = accept(sock_id,(struct sockaddr*)&socket_ip_config,&len);	// 传入的主机地址
+                    int tigger_sock_id = accept(sock_id, nullptr,nullptr);	// 传入的主机地址
                     if(tigger_sock_id==-1){
                         log(error,"accept error!");
                         return false;
@@ -168,7 +170,7 @@ bool server_socket::process_get(int target_sock_id) {
     read(target_sock_id,&size,4);
     std::string key;
     key.resize(size);
-    long real_size = read(target_sock_id,&key,size);
+    long real_size = read(target_sock_id,const_cast<char *>(key.data()),size);
     /* 这里不知道为什么要用常转换 */
     if(real_size < 0)
     {
@@ -188,20 +190,20 @@ bool server_socket::process_get(int target_sock_id) {
         send(target_sock_id,"null",5,MSG_NOSIGNAL);
         return false;
     }
-    if(!send_header(target_sock_id, sizeof(uint32_t) + key.size(), 5))
+    if(!send_header(target_sock_id, sizeof(uint32_t) + value.size(), 5))
     {
         log(error,"head数据发送失败！",target_sock_id);
         return false;
     }
     log(info,"head数据发送成功！",target_sock_id);
     uint32_t value_size = value.size();
-    usleep(300000);
+    //usleep(300000);
     if(send(target_sock_id,&value_size,4,MSG_NOSIGNAL)!=4)
     {
         log(error,"body:size数据发送失败!");
         return false;
     }
-    if (send(target_sock_id,&value,value_size,MSG_NOSIGNAL)!=value_size)
+    if (send(target_sock_id,const_cast<char *>(value.data()),value_size,MSG_NOSIGNAL)!=value_size)
     {
         log(error,"body:value数据发送失败!");
         return false;
@@ -220,7 +222,7 @@ bool server_socket::process_delete(int target_sock_id) {
     }
     std::string target_key;
     target_key.resize(size);
-    if(read(target_sock_id,&target_key,size)!=size)
+    if(read(target_sock_id,const_cast<char *>(target_key.data()),size)!=size)
     {
         log(error,"读取key内容失败!");
         return false;
@@ -263,7 +265,7 @@ bool server_socket::process_add(int target_sock_id) {
         return false;
     }
     target_key.resize(key_size);
-    if (read(target_sock_id,&target_key,key_size)<0)
+    if (read(target_sock_id,const_cast<char *>(target_key.data()),key_size)<0)
     {
         log(error,"body:key读取失败！",target_sock_id);
         //这里函数会退出，所以这里资源会被自动回收。固不再手动回收资源
@@ -275,7 +277,7 @@ bool server_socket::process_add(int target_sock_id) {
             return false;
         }
     target_value.resize(value_size);
-    if (read(target_sock_id,&target_value,value_size)<0)
+    if (read(target_sock_id,const_cast<char *>(target_value.data()),value_size)<0)
     {
         log(error,"body:value读取失败!",target_sock_id);
         return false;

@@ -14,7 +14,7 @@ void threads_pool::create_thread_pool(int max_thread, server_socket *server) {
         args.at(0) = this;
         args.at(1) = server;
         args.at(2) = &wait_list;
-        if (!pthread_create(&p_thread_accept, nullptr,thread_accept,&args))
+        if (pthread_create(&p_thread_accept, nullptr,thread_accept,&args))
         {
             log(error,"accept线程无法创建!");
         }
