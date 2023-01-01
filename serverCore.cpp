@@ -4,29 +4,29 @@
 
 
 #include "serverCore.h"
-
+#include "workThread.h"
 
 /* macOS在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
 void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
 }
 
-bool server_socket::init(short port, database &datas) {
+bool serverSocket::init(short port, database &datas) {
     data = datas;
     //delete &temp;  //释放掉为了规避c++的限制而使用的临时对象
-    sockId = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockId == -1) {
+    listenSockId = socket(AF_INET, SOCK_STREAM, 0);
+    if (listenSockId == -1) {
         log(error, "socket init error!");
         return false;
     }
     /* 创建基本的socket */
     int opt_code = 1;
-    setsockopt(sockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code));
+    setsockopt(listenSockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code));
     memset(&ipConfig, 0, sizeof(ipConfig)); //对地址结构体填充0,避免无关数据干扰
     ipConfig.sin_family = AF_INET;//IPv4
     ipConfig.sin_port = htons(port);
     ipConfig.sin_addr.s_addr = inet_addr("0.0.0.0");//绑定IP为0.0.0.0，接受来自任何IP的访问
-    if (bind(sockId, (struct sockaddr *) &ipConfig, sizeof(ipConfig)) < 0) {
+    if (bind(listenSockId, (struct sockaddr *) &ipConfig, sizeof(ipConfig)) < 0) {
         log(error, "bind error!");
         return false;
     }
@@ -37,9 +37,9 @@ bool server_socket::init(short port, database &datas) {
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 
 /* 所以采用kqueue进行阻塞 */
-bool server_socket::startListen() {
+bool serverSocket::startListen() {
     log(info, "Trying startup listening....");
-    if (listen(sockId, 100) < 0) {
+    if (listen(listenSockId, 100) < 0) {
         log(error, "listen startup error!");
         return false;
     }
@@ -47,7 +47,7 @@ bool server_socket::startListen() {
     threads_pool pool;
     listenWatchList = (struct kevent *) malloc(sizeof(struct kevent));
     listenTiggerList = (struct kevent *) malloc(sizeof(struct kevent) * 64);
-    pool.createThreadPool(8, this);
+   // pool.createThreadPool(8, this);
     /* 准备创建kqueue队列 */
     int listeningKq = kqueue();
     if (listeningKq == -1) {
@@ -56,8 +56,9 @@ bool server_socket::startListen() {
     }
     /* 注册信号处理函数SIGPIPE(用于解决一些奇怪的socket意外断开的问题) */
     signal(SIGPIPE, pipeHandle);
-
+    EV_SET(listenWatchList, listenSockId, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
     while (true) {
+        log(info,"开始阻塞");
         int nev = kevent(listeningKq, listenWatchList, 1, listenTiggerList, 64, nullptr);
         if (nev < 0)
             log(error, "listen: 内核队列出现错误!");
@@ -71,13 +72,13 @@ bool server_socket::startListen() {
                     log(error, "触发队列出现错误！");
                     return false;
                 }
-                if (listenTiggerList[i].ident == sockId) {
-                    int targetSockId = accept(sockId, nullptr, nullptr);    // 传入的socket,阻塞模式
+                if (listenTiggerList[i].ident == listenSockId) {
+                    int targetSockId = accept(listenSockId, nullptr, nullptr);    // 传入的socket,阻塞模式
                     if (targetSockId == -1) {
                         log(error, "accept error!");
                         return false;
                     }
-                    log(info, "连接已成功建立!");
+                    log(info, "accept成功！", targetSockId);
                     //        struct timeval timeOut{};
                     //        timeOut.tv_sec = 1;
                     //        timeOut.tv_usec = 0;
@@ -85,15 +86,50 @@ bool server_socket::startListen() {
                     //setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
                     /* 似乎设置超时后会有大问题 */
                     /* 开始使用队列进行处理接收到的客户端 */
-                    pool.addTasks(targetSockId);
+                     //pool.addTasks(targetSockId);
+                     /* 临时使用线程处理模式 */
+                    pool.producerConsumerMode(targetSockId, this);
                     /* 采用单线程来进行accept  */
+                    /* 以下是单线程处理的代码 */
+//                    uint32_t magic_number;
+//                    while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
+//                    {
+//                        //准备读取header数据
+//                        uint32_t size, type, rubbish;
+//                        if (magic_number != 1234) {
+//                            log(warning, "MagicNumber不匹配！");
+//                            continue;
+//                        }
+//                        log(info, "magicNumber校验通过");
+//                        if (read(targetSockId, (char *) &size, 4) <= 0) {
+//                            logh(error);
+//                            printf("无法读取Size!\t[id]: %d\n", targetSockId);
+//                            continue;
+//                        }
+//                        if (read(targetSockId, (char *) &type, 4) <= 0) {
+//                            logh(error);
+//                            printf("无法读取Type!\t[id]: %d\n", targetSockId);
+//                            continue;
+//                        }
+//                        if (read(targetSockId, (char *) &rubbish, 4) <= 0) {
+//                            logh(error);
+//                            printf("无法读取Padding!\t[id]: %d\n", targetSockId);
+//                            continue;
+//                        }
+//                        log(info, "header信息成功接收", targetSockId);
+//                        process(targetSockId, type);
+//                        log(info, "数据已完成处理!");
+//                    }
+//                    close(targetSockId);
+//                    log(info, "当前sock连接已断开!", targetSockId);
                 }
             }
         }
     }
+}
 
 
-    bool server_socket::process(int target_sock_id, uint32_t type) {
+    bool serverSocket::process(int target_sock_id, uint32_t type) {
         if (type == 0) {
             log(info, "收到put请求!", target_sock_id);
             if (!process_add(target_sock_id)) {
@@ -116,12 +152,12 @@ bool server_socket::startListen() {
         return true;
     }
 
-    void server_socket::stop() const {
-        close(sockId);
+    void serverSocket::stop() const {
+        close(listenSockId);
         data.saveToFile();
     }
 
-    bool server_socket::process_get(int target_sock_id) {
+    bool serverSocket::process_get(int target_sock_id) {
         uint32_t size;
         read(target_sock_id, &size, 4);
         std::string key;
@@ -162,7 +198,7 @@ bool server_socket::startListen() {
         return true;
     }
 
-    bool server_socket::process_delete(int target_sock_id) {
+    bool serverSocket::process_delete(int target_sock_id) {
         uint32_t size;
         if (read(target_sock_id, &size, 4) < 0) {
             log(error, "读取数据大小失败!");
@@ -188,7 +224,7 @@ bool server_socket::startListen() {
         return true;
     }
 
-    bool server_socket::send_safe(int target_sock_id, void *data_to_send, uint32_t size, int extra) {
+    bool serverSocket::send_safe(int target_sock_id, void *data_to_send, uint32_t size, int extra) {
         if (send(target_sock_id, data_to_send, size, extra) != size) {
             log(error, "发送body失败！");
             return false;
@@ -198,7 +234,7 @@ bool server_socket::startListen() {
 
     }
 
-    bool server_socket::process_add(int target_sock_id) {
+    bool serverSocket::process_add(int target_sock_id) {
         /*
          * description: 用于添加键值对数据
          */
@@ -242,7 +278,7 @@ bool server_socket::startListen() {
         }
     }
 
-    bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t type) {
+    bool serverSocket::send_header(int target_sock_id, uint32_t full_size, uint32_t type) {
         /*
          * 描述：用于发送response的头部数据
          * 返回值: 是否发送成功

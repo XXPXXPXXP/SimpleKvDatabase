@@ -16,15 +16,15 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <deque>
-#include <signal.h>
+#include <csignal>
 /* macOS搞了另一套东西来实现epoll */
 #include <thread>
 #include "serverLog.h"
 #include "database.h"
-#include "workThread.h"
-class server_socket{
+
+class serverSocket{
 private:
-    int sockId = -1;
+    int listenSockId = -1;
     bool isInit = false;
     struct sockaddr_in ipConfig;
     database temp;
@@ -39,7 +39,7 @@ public:
     bool process_delete(int target_sock_id);
     bool process_add(int target_sock_id);
     static bool send_header(int target_sock_id, uint32_t full_size, uint32_t type) ;
-    ~server_socket()
+    ~serverSocket()
     {
         log(warning,"server触发了回收!");
         stop();
