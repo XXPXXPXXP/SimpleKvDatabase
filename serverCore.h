@@ -2,14 +2,14 @@
 // Created by 徐鑫平 on 2022/12/16.
 //
 
-#ifndef FINAL_PROJECT_SERVER_CORE_H
-#define FINAL_PROJECT_SERVER_CORE_H
+#ifndef FINAL_PROJECT_SERVERCORE_H
+#define FINAL_PROJECT_SERVERCORE_H
 #include <ctime>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 /* inet.h 使用的是MacOSX13.0.sdk内置的版本 */
 #include <netinet/in.h>
-//#include <kqueue/sys/event.h>
+#include <sys/event.h>
 #include <cstring>
 #include <string>
 //#include <MacTypes.h>
@@ -19,45 +19,21 @@
 #include <signal.h>
 /* macOS搞了另一套东西来实现epoll */
 #include <thread>
-
-enum log_level {info,warning,error};
-void log(enum log_level level,const std::string& context);
-void log(enum log_level level, const std::string &context,int id);
-void logh(enum log_level level);
-class database {
-private:
-    size_t obj_count = 0;
-    std::deque<std::string> keys;
-    std::deque<std::string> values;
-public:
-    bool init();
-
-    bool add_value(std::string t_key, std::string t_value);
-
-    std::string get_value(std::string t_key);
-
-    bool delete_value(std::string t_key);
-
-    bool save_to_file();
-
-    bool read_from_file();
-
-    ~database() {
-        log(warning, "Force exit tiggered!\nSaving datas now....");
-        save_to_file();
-    }
-};
+#include "serverLog.h"
+#include "database.h"
+#include "workThread.h"
 class server_socket{
 private:
-    int sock_id = -1;
+    int sockId = -1;
     bool isInit = false;
-    struct sockaddr_in socket_ip_config;
+    struct sockaddr_in ipConfig;
     database temp;
+    struct kevent *listenWatchList,*listenTiggerList;
     database & data = temp;
 public:
     bool init(short port, database &datas);
     /* 默认端口采用1433，也就是SQL的默认端口 */
-    bool start_listen();
+    bool startListen();
     bool process(int target_sock_id, uint32_t type);
     bool process_get(int target_sock_id);
     bool process_delete(int target_sock_id);
@@ -74,4 +50,4 @@ public:
     static bool send_safe(int target_sock_id, void *data_to_send, uint32_t size, int extra);
 };
 void cleanup( int signum);
-#endif //FINAL_PROJECT_SERVER_CORE_H
+#endif //FINAL_PROJECT_SERVERCORE_H

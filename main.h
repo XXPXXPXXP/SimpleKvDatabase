@@ -6,8 +6,8 @@
 #define FINAL_PROJECT_MAIN_H
 #include <iostream>
 #include <vector>
-#include "server_core.h"
-std::vector<server_socket *> runnings;
+#include "serverCore.h"
+
 void cleanup( int signum)
 {
     std::cout << "[W] 收到外部信号 ("<<signum<<") !"<<std::endl;

@@ -1,8 +1,8 @@
 //
 // Created by 徐鑫平 on 2022/12/23.
 //
-#include "server_log.h"
-
+#include "serverLog.h"
+enum log_level global_log_level;
 
 
 void log(enum log_level level, const std::string &context) {

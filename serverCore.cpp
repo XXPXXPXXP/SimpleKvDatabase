@@ -3,32 +3,31 @@
 //
 
 
-#include "server_core.h"
+#include "serverCore.h"
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnreachableCode"
+
 
 /* macOS在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
-void pipe_handle(int) {
+void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
 }
 
 bool server_socket::init(short port, database &datas) {
     data = datas;
     //delete &temp;  //释放掉为了规避c++的限制而使用的临时对象
-    sock_id = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock_id == -1) {
+    sockId = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockId == -1) {
         log(error, "socket init error!");
         return false;
     }
     /* 创建基本的socket */
     int opt_code = 1;
-    setsockopt(sock_id, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code));
-    memset(&socket_ip_config, 0, sizeof(socket_ip_config)); //对地址结构体填充0,避免无关数据干扰
-    socket_ip_config.sin_family = AF_INET;//IPv4
-    socket_ip_config.sin_port = htons(port);
-    socket_ip_config.sin_addr.s_addr = inet_addr("0.0.0.0");//绑定IP为0.0.0.0，接受来自任何IP的访问
-    if (bind(sock_id, (struct sockaddr *) &socket_ip_config, sizeof(socket_ip_config)) < 0) {
+    setsockopt(sockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code));
+    memset(&ipConfig, 0, sizeof(ipConfig)); //对地址结构体填充0,避免无关数据干扰
+    ipConfig.sin_family = AF_INET;//IPv4
+    ipConfig.sin_port = htons(port);
+    ipConfig.sin_addr.s_addr = inet_addr("0.0.0.0");//绑定IP为0.0.0.0，接受来自任何IP的访问
+    if (bind(sockId, (struct sockaddr *) &ipConfig, sizeof(ipConfig)) < 0) {
         log(error, "bind error!");
         return false;
     }
@@ -39,63 +38,48 @@ bool server_socket::init(short port, database &datas) {
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 
 /* 所以采用kqueue进行阻塞 */
-bool server_socket::start_listen() {
+bool server_socket::startListen() {
     log(info, "Trying startup listening....");
-    if (listen(sock_id, 100) < 0) {
+    if (listen(sockId, 100) < 0) {
         log(error, "listen startup error!");
         return false;
     }
+    /* 启动线程池 */
+    threads_pool pool;
+    listenWatchList = (struct kevent*)malloc(sizeof(struct kevent));
+    listenTiggerList = (struct kevent*)malloc(sizeof(struct kevent) * 64);
+    pool.createThreadPool(8, this);
+    /* 准备创建kqueue队列 */
+    int listeningKq = kqueue();
+    if (listeningKq == -1)
+    {
+        log(error,"Listen: kqueue队列无法创建！");
+        return false;
+    }
+    /* 注册信号处理函数SIGPIPE(用于解决一些奇怪的socket意外断开的问题) */
+    signal(SIGPIPE, pipeHandle);
 
-    /* 注册信号处理函数SIGPIPE(用于解决一些奇怪的问题) */
-    signal(SIGPIPE, pipe_handle);
     while (true) {
-        int tigger_sock_id = accept(sock_id, nullptr, nullptr);    // 传入的主机地址
-        if (tigger_sock_id == -1) {
+        int nev = kevent(listeningKq,listenWatchList,1,listenTiggerList,64, nullptr);
+
+        int targetSockId = accept(sockId, nullptr, nullptr);    // 传入的socket,阻塞模式
+        if (targetSockId == -1) {
             log(error, "accept error!");
             return false;
         }
         log(info, "连接已成功建立!");
-        char *buff = (char *) malloc(10);
-        struct timeval timeOut;
-        timeOut.tv_sec = 0;
-        timeOut.tv_usec = 100000;
+//        struct timeval timeOut{};
+//        timeOut.tv_sec = 1;
+//        timeOut.tv_usec = 0;
         /* 设置连接超时 */
-        //setsockopt(tigger_sock_id, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
-        uint32_t magic_number;
-        while (read(tigger_sock_id, (char *) &magic_number, 4) > 0)//判断socket是否结束
-        {
-            //准备读取header数据
-            uint32_t  size, type, rubbish;
-            if (magic_number != 1234) {
-                log(warning, "MagicNumber不匹配！");
-                continue;
-            }
-            log(info, "magicNumber校验通过");
-            if (read(tigger_sock_id, (char *) &size, 4) <= 0) {
-                logh(error);
-                printf("无法读取Size!\t[id]: %d\n", tigger_sock_id);
-                continue;
-            }
-            if (read(tigger_sock_id, (char *) &type, 4) <= 0) {
-                logh(error);
-                printf("无法读取Type!\t[id]: %d\n", tigger_sock_id);
-                continue;
-            }
-            if (read(tigger_sock_id, (char *) &rubbish, 4) <= 0) {
-                logh(error);
-                printf("无法读取Padding!\t[id]: %d\n", tigger_sock_id);
-                continue;
-            }
-            log(info, "header信息成功接收", tigger_sock_id);
-            process(tigger_sock_id, type);
-            log(info, "数据已完成处理!");
-        }
-        close(tigger_sock_id);
-        log(info, "当前sock连接已断开!", tigger_sock_id);
+        //setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
+        /* 似乎设置超时后会有大问题 */
+        /* 开始使用队列进行处理接收到的客户端 */
+        pool.addTasks(targetSockId);
+        /* 采用单线程来进行accept  */
     }
 }
 
-#pragma clang diagnostic pop
 
 bool server_socket::process(int target_sock_id, uint32_t type) {
     if (type == 0) {
@@ -121,8 +105,8 @@ bool server_socket::process(int target_sock_id, uint32_t type) {
 }
 
 void server_socket::stop() const {
-    close(sock_id);
-    data.save_to_file();
+    close(sockId);
+    data.saveToFile();
 }
 
 bool server_socket::process_get(int target_sock_id) {
@@ -141,7 +125,7 @@ bool server_socket::process_get(int target_sock_id) {
         key.clear();
         return false;
     }
-    std::string value = data.get_value(key);
+    std::string value = data.getValue(key);
     if (value.empty()) {
         send(target_sock_id, "null", 5, MSG_NOSIGNAL);
         return false;
@@ -182,7 +166,7 @@ bool server_socket::process_delete(int target_sock_id) {
      * 完成数据读取
      */
     bool result;
-    result = data.delete_value(target_key);
+    result = data.deleteValue(target_key);
     if (!send_header(target_sock_id, 1, 4)) {
         log(error, "发送head失败!");
         return false;
@@ -228,7 +212,7 @@ bool server_socket::process_add(int target_sock_id) {
         return false;
     }
 
-    if (data.add_value(target_key, target_value)) {
+    if (data.addValue(target_key, target_value)) {
         log(info, "键值对成功保存!", target_sock_id);
         send_header(target_sock_id, 1, 3);
         bool status = true;
@@ -277,4 +261,3 @@ bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t
 }
 
 
-#pragma clang diagnostic pop
