@@ -3,124 +3,32 @@
 //
 #include "workThread.h"
 #include <thread>
-
-void threads_pool::createThreadPool(int maxThread, serverSocket *server) {
-    pthread_t pthread;
-    struct argsTpMode * args = new struct argsTpMode;
-    runningThreads.resize(maxThread);
-    args->_this = this;
-    args->server = server;
+#include <climits>
+void threads_pool::createThreadPool(int max_thread, server_socket *server) {
+    pthread_t p_thread_accept;
+    std::vector<void *> args(3);
+    args.at(0) = this;
+    args.at(1) = server;
     /* 构造将要传入的参数列表 */
-    pthread_mutex_init(&taskLocker, nullptr);
-    /* 初始化互斥锁，用于不同的线程进行竞争 */
-    kId = kqueue();
-    /* 创建kqueue队列 */
-
-    if (kId == -1) {
-        log(error, "Worker: kqueue队列无法创建！");
-        exit(-2);
-    }
-    for (int i = 0; i < maxThread; ++i) {
-        args->count = i;
-        if (pthread_create(&(runningThreads.at(0)), nullptr, threadWorker, args)) {
-            log(error, "线程创建错误！", i);
-        }
-    }
     /* 创建实际的线程 */
 }
 
 
-[[noreturn]] void *threads_pool::threadWorker(void *args) {
-    auto *_this = reinterpret_cast<struct argsTpMode *>(args)->_this;
-    auto * server = reinterpret_cast<struct argsTpMode*>(args)->server;
-    int i = reinterpret_cast<struct argsTpMode *>(args)->count;
+void * threads_pool::threadWorker(void *args) {
+    auto * _this = reinterpret_cast<threads_pool *>(reinterpret_cast<std::vector<void *> *>(args)->at(0));
+    auto * server = reinterpret_cast<server_socket *>(reinterpret_cast<std::vector<void *> *>(args)->at(1));
+    auto * kId = reinterpret_cast<int *>(reinterpret_cast<std::vector<void *> *>(args)->at(2));
     /* 接收传入的参数列表 */
-    int kId = _this->kId;
-    delete reinterpret_cast<struct argsTpMode *>(args);
-    while (true) {
-        /* 处理kqueue队列 */
-        int event_list = kevent(kId, _this->watchList, 64, _this->eventList, 64, nullptr);
-        if (event_list < 0) {
-            log(warning, i, "kqueue队列错误！", -1);
-            continue;
-        } else {
-            pthread_mutex_lock(&(_this->taskLocker));
-            int targetSockId = (_this->eventList)->ident;
-            EV_SET(_this->watchList, targetSockId, EVFILT_READ, EV_CLEAR | EV_DISABLE, 0, 0, 0);
-            EV_SET(_this->eventList, targetSockId, EVFILT_READ, EV_DELETE, 0, 0, 0);
-            log(info, i, "获取到sockID: ", targetSockId);
-            pthread_mutex_unlock(&(_this->taskLocker));
-            /* 让这些线程竞争同一个锁来防止多个线程同时与同一个客户端进行通信 */
-            uint32_t magic_number;
-            while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
-            {
-                //准备读取header数据
-                uint32_t size, type, rubbish;
-                if (magic_number != 1234) {
-                    log(warning, "MagicNumber不匹配！");
-                    continue;
-                }
-                log(info, "magicNumber校验通过");
-                if (read(targetSockId, (char *) &size, 4) <= 0) {
-                    logh(error);
-                    printf("无法读取Size!\t[id]: %d\n", targetSockId);
-                    continue;
-                }
-                if (read(targetSockId, (char *) &type, 4) <= 0) {
-                    logh(error);
-                    printf("无法读取Type!\t[id]: %d\n", targetSockId);
-                    continue;
-                }
-                if (read(targetSockId, (char *) &rubbish, 4) <= 0) {
-                    logh(error);
-                    printf("无法读取Padding!\t[id]: %d\n", targetSockId);
-                    continue;
-                }
-                log(info, "header信息成功接收", targetSockId);
-                server->process(targetSockId, type);
-                log(info, "数据已完成处理!");
-            }
-            /* 开始读取head */
-            close(targetSockId);
-            log(info, "当前sock连接已断开!", targetSockId);
-            EV_SET(_this->watchList, targetSockId, EVFILT_READ, EV_DELETE, 0, 0, 0);
-            /* 断开连接并且释放资源 */
-        }
-    }
-}
-
-
-void threads_pool::addTasks(int targetId) {
-    EV_SET(watchList, targetId, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
-}
-
-void threads_pool::producerConsumerMode(int targetSockId, serverSocket *server) {
-    struct argsPcMode *args = new struct argsPcMode;
-    args->server = server;
-    args->sockID = targetSockId;
-    runningThreads.resize(1);
-    if (pthread_create(&(runningThreads.at(0)), nullptr, process_theard, args)) {
-        log(error, "线程创建错误！", targetSockId);
-    }
-   // usleep(20);
-}
-
-void *threads_pool::process_theard(void * args) {
-    int targetSockId = reinterpret_cast<struct argsPcMode *>(args)->sockID;
-    auto server = reinterpret_cast<struct argsPcMode *>(args)->server;
-    delete reinterpret_cast<struct argsPcMode *>(args);
-    /* 接收参数 */
     uint32_t magic_number;
     while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
     {
-        log(info,"线程读取sock成功",targetSockId);
         //准备读取header数据
-        uint32_t size, type, rubbish;
+        uint32_t  size, type, rubbish;
         if (magic_number != 1234) {
-            log(warning, "MagicNumber不匹配！",targetSockId);
+            log(warning, "MagicNumber不匹配！");
             continue;
         }
-        log(info, "magicNumber校验通过",targetSockId);
+        log(info, "magicNumber校验通过");
         if (read(targetSockId, (char *) &size, 4) <= 0) {
             logh(error);
             printf("无法读取Size!\t[id]: %d\n", targetSockId);
@@ -137,18 +45,23 @@ void *threads_pool::process_theard(void * args) {
             continue;
         }
         log(info, "header信息成功接收", targetSockId);
-        server->process(targetSockId, type);
+        process(targetSockId, type);
         log(info, "数据已完成处理!");
+        close(targetSockId);
+        log(info, "当前sock连接已断开!", targetSockId);
+        return nullptr;
     }
-    /* 开始读取head */
-    close(targetSockId);
-    log(info, "当前sock连接已断开!", targetSockId);
-    return nullptr;
-    /* 断开连接并且释放资源 */
 }
 
+void threads_pool::addTasks(int targetId) {
 
+}
 
-
-
-
+int threads_pool::foundMin() {
+    int min = INT_MAX;
+    for (int i = 0; i < workersTasksCount.size(); ++i) {
+        if (min > workersTasksCount.at(i))
+            min = workersTasksCount.at(i);
+    }
+    return min;
+}

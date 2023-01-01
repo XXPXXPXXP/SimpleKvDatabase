@@ -7,13 +7,16 @@
 #include <iostream>
 #include <vector>
 #include "serverCore.h"
-serverSocket * p_target_server;
+
 void cleanup( int signum)
 {
     std::cout << "[W] 收到外部信号 ("<<signum<<") !"<<std::endl;
-    p_target_server->stop();
+    for (int i = 0; i < runnings.size(); ++i) {
+        std::cout<<"[W] 开始回收第"<<i+1<<"个实例"<<std::endl;
+        runnings.at(i)->stop();
+    }
     /* 用以停止所有正在运行的进程 */
-    log(info,"所有进程均已完成回收！");
+    std::cout<<"[I] 所有实例已完成回收"<<std::endl;
     exit(signum);
 
 }
