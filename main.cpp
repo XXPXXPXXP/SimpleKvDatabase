@@ -14,7 +14,7 @@ int main(int argc, const char * argv[]) {
     runnings.push_back(&target_server);
     target_server.init(1434, datas);
     signal(SIGTERM, cleanup); //注册信号处理函数
-    target_server.start_listen();
+    target_server.startListen();
     std::cout << "[W] server stoped!\n";
     return 0;
 }

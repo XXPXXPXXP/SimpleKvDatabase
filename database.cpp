@@ -2,7 +2,8 @@
 // Created by 徐鑫平 on 2022/12/24.
 //
 #include "database.h"
-
+#include <fstream>
+#include <cstdlib>
 #include <utility>
 bool compare(const char * a,const char *b)
 {
@@ -19,14 +20,14 @@ bool compare(const char * a,const char *b)
     return result;
 }
 bool database::init() {
-    if(!read_from_file())
+    if(!readFromFile())
     {
         log(warning,"读取数据文件失败！");
     }
     return true;
 }
 
-bool database::add_value(std::string t_key, std::string t_value) {
+bool database::addValue(std::string t_key, std::string t_value) {
     int index = search(t_key);
     if (index==-1) {
         keys.emplace_back(t_key.data());
@@ -46,7 +47,7 @@ bool database::add_value(std::string t_key, std::string t_value) {
     return true;
 }
 
-std::string database::get_value(std::string t_key) {
+std::string database::getValue(std::string t_key) {
     int i = search(std::move(t_key));
     std::string result;
     if (i == -1)
@@ -55,7 +56,7 @@ std::string database::get_value(std::string t_key) {
     return result;
 }
 
-bool database::read_from_file() {
+bool database::readFromFile() {
     std::ifstream keys_on_file;
     keys_on_file.open("datas.dat",std::ios_base::in|std::ios_base::binary);
     if(!keys_on_file.is_open())
@@ -95,7 +96,7 @@ bool database::read_from_file() {
     return true;
 }
 
-bool database::delete_value(std::string t_key) {
+bool database::deleteValue(std::string t_key) {
     int index = search(t_key);
     if (index==-1)
     {
@@ -107,7 +108,7 @@ bool database::delete_value(std::string t_key) {
     return true;
 }
 
-bool database::save_to_file() {
+bool database::saveToFile() {
     uint32_t size;
     std::string datas;
     std::ofstream file;
