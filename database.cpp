@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "performance-inefficient-string-concatenation"
+#pragma ide diagnostic ignored "performance-unnecessary-value-param"
 //
 // Created by 徐鑫平 on 2022/12/24.
 //
@@ -24,14 +27,20 @@ bool database::init() {
     {
         log(warning,"读取数据文件失败！");
     }
+    pthread_mutex_init(&Locker, nullptr);
+    pthread_mutex_init(&Locker, nullptr);
     return true;
 }
 
 bool database::addValue(std::string t_key, std::string t_value) {
+    pthread_mutex_lock(&Locker);
     int index = search(t_key);
+    pthread_mutex_unlock(&Locker);
     if (index==-1) {
+        pthread_mutex_lock(&Locker);
         keys.emplace_back(t_key.data());
         values.emplace_back(t_value.data());
+        pthread_mutex_unlock(&Locker);
     } else
     {
         if (compare(values.at(index).data(),t_value.data())) {
@@ -41,18 +50,22 @@ bool database::addValue(std::string t_key, std::string t_value) {
         else {
             logh(warning);
             printf("原数据: %s ,将替换为: %s !",values.at(index).data(),t_value.data());
+            pthread_mutex_lock(&Locker);
             values.at(index) = t_value;
+            pthread_mutex_unlock(&Locker);
         }
     }
     return true;
 }
 
 std::string database::getValue(std::string t_key) {
+    pthread_mutex_lock(&Locker);
     int i = search(std::move(t_key));
     std::string result;
     if (i == -1)
         return result;
     result = values.at(i);
+    pthread_mutex_unlock(&Locker);
     return result;
 }
 
@@ -87,8 +100,7 @@ bool database::readFromFile() {
             keys_on_file.read(const_cast<char *>(value.data()), size);
         }
         values.emplace_back(value);
-        logh(info);
-        std::cout<<"已从文件中读取: key: " << key <<" value: "<< value << std::endl;
+        log(info,"已从文件中读取: key="+key+"value="+value);
         key.clear();
         value.clear();
     }
@@ -97,14 +109,17 @@ bool database::readFromFile() {
 }
 
 bool database::deleteValue(std::string t_key) {
+    pthread_mutex_lock(&Locker);
     int index = search(t_key);
     if (index==-1)
     {
         log(error,"待删除的数据: "+t_key+"无法找到!");
+        pthread_mutex_unlock(&Locker);
         return false;
     }
     keys.erase(keys.begin()+index);
     values.erase(values.begin()+index);
+    pthread_mutex_unlock(&Locker);
     return true;
 }
 
@@ -125,8 +140,7 @@ bool database::saveToFile() {
         size = values.at(i).size();
         file.write(reinterpret_cast<char *>(&size),4);
         file.write(values.at(i).c_str(),size);
-        logh(info);
-        std::cout<<"已写入到文件: key: "<<keys.at(i)<<" ;value: "<<values.at(i)<<std::endl;
+        log(info,"已写入到文件,key="+keys.at(i)+"value="+values.at(i));
     }
     size = 0;
     file.write(reinterpret_cast<char *>(&size),4);
@@ -159,3 +173,5 @@ int database::search(std::string target) {
     }
     return -1;
 }
+
+#pragma clang diagnostic pop

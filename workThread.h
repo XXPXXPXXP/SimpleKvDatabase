@@ -6,11 +6,6 @@
 #define FINAL_PROJECT_WORKTHREAD_H
 #include <vector>
 #include "serverCore.h"
-struct args
-{
-    int sockID;
-    serverSocket * server;
-};
 class threads_pool {
     std::vector<pthread_t> runningThreads;
     int workersTasksCount;
@@ -28,5 +23,16 @@ public:
         pthread_mutex_destroy(&taskLocker);
         log(warning,"线程池正在被回收！");
     }
+};
+struct argsPcMode
+{
+    int sockID;
+    serverSocket * server;
+};
+struct argsTpMode
+{
+    threads_pool * _this;
+    serverSocket * server;
+    int count;
 };
 #endif //FINAL_PROJECT_WORKTHREAD_H

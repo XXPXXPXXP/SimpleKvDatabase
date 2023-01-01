@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 /* inet.h 使用的是MacOSX13.0.sdk内置的版本 */
 #include <netinet/in.h>
-#include <sys/event.h>
+#include <kqueue/sys/event.h>
 #include <cstring>
 #include <string>
 //#include <MacTypes.h>

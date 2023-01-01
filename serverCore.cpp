@@ -33,8 +33,6 @@ bool serverSocket::init(short port, database &datas) {
     return true;
 }
 /* 本来想使用epoll进行阻塞处理的，可是macOS内核不支持epoll */
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "ConstantFunctionResult"
 
 /* 所以采用kqueue进行阻塞 */
 bool serverSocket::startListen() {
@@ -46,8 +44,8 @@ bool serverSocket::startListen() {
     /* 启动线程池 */
     threads_pool pool;
     listenWatchList = (struct kevent *) malloc(sizeof(struct kevent));
-    listenTiggerList = (struct kevent *) malloc(sizeof(struct kevent) * 64);
-   // pool.createThreadPool(8, this);
+    listenTiggerList = (struct kevent *) malloc(sizeof(struct kevent) * 100);
+    //pool.createThreadPool(8, this);
     /* 准备创建kqueue队列 */
     int listeningKq = kqueue();
     if (listeningKq == -1) {
@@ -59,7 +57,7 @@ bool serverSocket::startListen() {
     EV_SET(listenWatchList, listenSockId, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
     while (true) {
         log(info,"开始阻塞");
-        int nev = kevent(listeningKq, listenWatchList, 1, listenTiggerList, 64, nullptr);
+        int nev = kevent(listeningKq, listenWatchList, 1, listenTiggerList, 100, nullptr);
         if (nev < 0)
             log(error, "listen: 内核队列出现错误!");
         else {
@@ -193,8 +191,7 @@ bool serverSocket::startListen() {
             log(error, "body:value数据发送失败!");
             return false;
         }
-        logh(info);
-        printf("返回的数据: value = %s\n", value.c_str());
+        log(info,"返回的数据: value = "+value);
         return true;
     }
 
@@ -266,8 +263,7 @@ bool serverSocket::startListen() {
             bool status = true;
             //usleep(300000);
             send_safe(target_sock_id, &status, 1, MSG_NOSIGNAL);
-            logh(info);
-            printf("key:%s\tvalue:%s\n", target_key.c_str(), target_value.c_str());
+            log(info,"Key: "+target_key+"Value:"+ target_value);
             return true;
         } else {
             log(error, "键值对保存失败!", target_sock_id);

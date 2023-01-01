@@ -2,7 +2,7 @@
 // Created by 徐鑫平 on 2022/12/23.
 //
 #include "serverLog.h"
-enum log_level global_log_level;
+enum log_level global_log_level = warning;
 
 void log(enum log_level level, const std::string &context) {
     if (level >= global_log_level) {
