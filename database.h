@@ -13,7 +13,8 @@ private:
     size_t obj_count=0;
     std::deque<std::string> keys;
     std::deque<std::string> values;
-    pthread_mutex_t Locker;
+    pthread_mutex_t writeLocker;
+    pthread_mutex_t readLocker;
 public:
     bool init();
     bool addValue(std::string t_key, std::string t_value);

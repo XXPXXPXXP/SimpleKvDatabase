@@ -6,13 +6,27 @@
 #define FINAL_PROJECT_WORKTHREAD_H
 #include <vector>
 #include "serverCore.h"
+struct args
+{
+    int sockID;
+    serverSocket * server;
+};
 class threads_pool {
-    std::vector<pid_t> runningThreads;
-    std::vector<short> workersTasksCount;
+    std::vector<pthread_t> runningThreads;
+    int workersTasksCount;
+    struct kevent * watchList;
+    struct kevent * eventList;
+    pthread_mutex_t taskLocker;
+    int kId;
 public:
-    void createThreadPool(int max_thread, server_socket *server);
-    static void * threadWorker(void *args);
+    void createThreadPool(int maxThread, serverSocket *server);
+    [[noreturn]] static void * threadWorker(void *args);
+    static void * process_theard(void * args);
+    void producerConsumerMode(int targetSockId, serverSocket *server);
     void addTasks(int targetId);
-    int foundMin();
+    ~threads_pool(){
+        pthread_mutex_destroy(&taskLocker);
+        log(warning,"线程池正在被回收！");
+    }
 };
 #endif //FINAL_PROJECT_WORKTHREAD_H
