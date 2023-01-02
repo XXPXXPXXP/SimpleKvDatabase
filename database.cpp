@@ -44,12 +44,10 @@ bool database::addValue(std::string t_key, std::string t_value) {
     } else
     {
         if (compare(values.at(index).data(),t_value.data())) {
-            logh(warning);
-            printf("待写入的数据: %s 已经存在!\n",t_value.data());
+            log(warning,"待写入的数据: "+t_value+" 已经存在!");
         }
         else {
-            logh(warning);
-            printf("原数据: %s ,将替换为: %s !",values.at(index).data(),t_value.data());
+            log(warning,"原数据: "+values.at(index)+" 将会替换成: "+t_value);
             pthread_mutex_lock(&Locker);
             values.at(index) = t_value;
             pthread_mutex_unlock(&Locker);

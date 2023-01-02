@@ -5,22 +5,20 @@
 #ifndef FINAL_PROJECT_SERVERCORE_H
 #define FINAL_PROJECT_SERVERCORE_H
 #include <ctime>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-/* inet.h 使用的是MacOSX13.0.sdk内置的版本 */
+/* 该分支不再能在mac上可用 */
 #include <netinet/in.h>
-#include <kqueue/sys/event.h>
-#include <cstring>
-#include <string>
-//#include <MacTypes.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <deque>
-#include <csignal>
-/* macOS搞了另一套东西来实现epoll */
-#include <thread>
 #include "serverLog.h"
 #include "database.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
+/* 这是epoll的版本 */
+#include <sys/epoll.h>
+#include <csignal>
+#include <unistd.h>
+#include <cstring>
+#include <string>
 
 class serverSocket{
 private:
@@ -28,7 +26,6 @@ private:
     bool isInit = false;
     struct sockaddr_in ipConfig;
     database temp;
-    struct kevent *listenWatchList,*listenTiggerList;
     database & data = temp;
 public:
     bool init(short port, database &datas);
