@@ -13,5 +13,4 @@
 #define ERROR_COLOR "\033[0;32;31m" //红色
 #define WARNING_COLOR "\033[1;33m"  //黄色
 #define INFO_COLOR "\033[0;32;32m"  //绿色
-
 #endif //FINAL_PROJECT_SETTINGS_H

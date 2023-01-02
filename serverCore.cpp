@@ -6,8 +6,9 @@
 #include "serverCore.h"
 #include "workThread.h"
 #include "settings.h"
-extern std::vector<pid_t> runningProcess;
 
+extern std::vector<pid_t> runningProcess;
+extern serverSocket *p_target_server;
 
 /* macOS/Linux 在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
 void pipeHandle(int) {
@@ -61,25 +62,27 @@ bool serverSocket::init(short port, database &datas) {
     listenEV.events = EPOLLIN;  // 类似于 kqueue的 EV_READ
     int ret = epoll_ctl(listeningEpoll, EPOLL_CTL_ADD, listenSockId, &listenEV);
     if (ret == -1) {
-        log(error,"epoll_ctl error");
+        log(error, "epoll_ctl error");
         exit(errno);
     }
     struct epoll_event listenEpollEvent[128];
     int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     /* 创建epoll结构体并注册事件，准备用来阻塞 */
     runningProcess.resize(PROCESS_SIZE);
-    for (int i = 0; i < PROCESS_SIZE; ++i) {
+    for (int i = 0; i < PROCESS_SIZE ; ++i) {
         pid_t pid = fork();
-        if (pid!=0)
-        {
+        if (pid != 0) {
             runningProcess.at(i) = pid;
+        } else {
+            child = true;
+            break;
         }
     }
     /* 准备创建进程 */
     while (true) {
         log(info, "开始阻塞");
-        int num = epoll_wait(listeningEpoll, listenEpollEvent, size , -1);
-        if (num<1) {
+        int num = epoll_wait(listeningEpoll, listenEpollEvent, size, -1);
+        if (num < 1) {
             log(error, "epoll队列异常！");
             continue;
         }
@@ -125,7 +128,9 @@ bool serverSocket::process(int target_sock_id, uint32_t type) {
 
 void serverSocket::stop() const {
     close(listenSockId);
-    data.saveToFile();
+    if (!child) {
+        data.saveToFile();
+    }
 }
 
 bool serverSocket::get(int target_sock_id) {
@@ -277,4 +282,8 @@ bool serverSocket::sendHeader(int target_sock_id, uint32_t full_size, uint32_t t
     return result;
 }
 
-
+void childExit(int singleNumber) {
+    log(info, "子进程已收到退出信号", singleNumber);
+    p_target_server->stop();
+    exit(0);
+}
