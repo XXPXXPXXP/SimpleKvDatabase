@@ -2,24 +2,23 @@
 //  main.cpp
 //  Final_project
 //
-//  Created by 徐鑫平 on 2022/12/14.
+//  Created by 神奇bug在哪里 on 2022/12/14.
 //
-#include "main.h"
 #include "settings.h"
 #include "serverCore.h"
-
-#include <csignal>
 #include <wait.h>
+#include <vector>
 
+serverSocket * p_target_server;
 std::vector<pid_t> runningProcess;
-int main(int argc, const char * argv[]) {
+int main() {
     database datas;
     datas.init();
-    serverSocket target_server;
-    p_target_server = &target_server;
-    target_server.init(SERVER_PORT, datas);
+    serverSocket targetServer;
+    p_target_server = &targetServer;
+    targetServer.init(SERVER_PORT, datas);
     signal(SIGTERM, cleanUpAll); //注册信号处理函数
-    target_server.startServer();
+    targetServer.startServer();
 }
 
 void cleanUpAll(int singleNumber)

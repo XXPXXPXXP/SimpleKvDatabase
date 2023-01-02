@@ -1,10 +1,9 @@
 //
-// Created by 徐鑫平 on 2022/12/24.
+// Created by 神奇bug在哪里 on 2022/12/24.
 //
 
 #ifndef FINAL_PROJECT_DATABASE_H
 #define FINAL_PROJECT_DATABASE_H
-#include <iostream>
 #include <deque>
 #include "serverLog.h"
 
@@ -16,12 +15,12 @@ private:
     pthread_mutex_t Locker;
 public:
     bool init();
-    bool addValue(std::string t_key, std::string t_value);
-    std::string getValue(std::string t_key);
-    bool deleteValue(std::string t_key);
+    bool addValue(const std::string& targetKey, const std::string& targetValue);
+    std::string getValue(const std::string& targetKey);
+    bool deleteValue(const std::string& t_key);
     bool saveToFile();
     bool readFromFile();
-    int search(std::string target);
+    int search(const std::string& target);
     ~database(){
         log(warning,"Force exit tiggered!\nSaving datas now....");
         saveToFile();

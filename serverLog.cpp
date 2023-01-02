@@ -1,5 +1,5 @@
 //
-// Created by 徐鑫平 on 2022/12/23.
+// Created by 神奇bug在哪里 on 2022/12/23.
 //
 #include "serverLog.h"
 #include "settings.h"
@@ -17,15 +17,6 @@ void log(enum log_level level, const std::string &context,int id) {
         std::cout << (level == info ? INFO_COLOR : (level == warning ? WARNING_COLOR : ERROR_COLOR));
         std::cout << (level == info ? "[I] " : (level == warning ? "[W] " : "[E] "));
         std::cout << context << "\t[ID]: " << id << COLOR_END << std::endl;
-    }
-}
-
-void log(enum log_level level, int i, const std::string &context, int id) {
-    if (level >= global_log_level) {
-        std::cout << (level == info ? INFO_COLOR : (level == warning ? WARNING_COLOR : ERROR_COLOR));
-        std::cout << (level == info ? "[I] " : (level == warning ? "[W] " : "[E] "));
-        std::cout << "[线程" << i << "]";
-        std::cout << context << "\t[sockID]: " << id << COLOR_END << std::endl;
     }
 }
 

@@ -1,12 +1,11 @@
 //
-// Created by 徐鑫平 on 2022/12/29.
+// Created by 神奇bug在哪里 on 2022/12/29.
 //
 #include "workThread.h"
-#include <thread>
 
 
 void threadsPool::start(int targetSockId, serverSocket *server) {
-    struct argsNtMode *args = new struct argsNtMode;
+    auto *args = new struct args;
     args->server = server;
     args->sockID = targetSockId;
     runningThreads.resize(1);
@@ -16,9 +15,9 @@ void threadsPool::start(int targetSockId, serverSocket *server) {
 }
 
 void *threadsPool::worker(void *args) {
-    int targetSockId = reinterpret_cast<struct argsNtMode *>(args)->sockID;
-    auto server = reinterpret_cast<struct argsNtMode *>(args)->server;
-    delete reinterpret_cast<struct argsNtMode *>(args);
+    int targetSockId = reinterpret_cast<struct args *>(args)->sockID;
+    auto server = reinterpret_cast<struct args *>(args)->server;
+    delete reinterpret_cast<struct args *>(args);
     /* 接收参数 */
     uint32_t magic_number;
     while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束

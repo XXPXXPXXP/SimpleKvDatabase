@@ -1,5 +1,5 @@
 //
-// Created by 徐鑫平 on 2022/12/29.
+// Created by 神奇bug在哪里 on 2022/12/29.
 //
 
 #ifndef FINAL_PROJECT_WORKTHREAD_H
@@ -9,7 +9,6 @@
 class threadsPool {
     pthread_mutex_t taskLocker;
     std::vector<pthread_t> runningThreads;
-    int kId;
 public:
 
     static void * worker(void * args);
@@ -20,16 +19,11 @@ public:
         log(warning,"线程池正在被回收！");
     }
 };
-struct argsNtMode
+struct args
 {
     int sockID;
     serverSocket * server;
 };
-struct args
-{
-    threadsPool * _this;
-    serverSocket * server;
-    int count;
-};
+
 
 #endif //FINAL_PROJECT_WORKTHREAD_H

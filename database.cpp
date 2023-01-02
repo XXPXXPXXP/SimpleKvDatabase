@@ -1,27 +1,11 @@
-#pragma clang diagnostic push
 #pragma ide diagnostic ignored "performance-inefficient-string-concatenation"
-#pragma ide diagnostic ignored "performance-unnecessary-value-param"
 //
-// Created by 徐鑫平 on 2022/12/24.
+// Created by 神奇bug在哪里 on 2022/12/24.
 //
 #include "database.h"
 #include <fstream>
-#include <cstdlib>
-#include <utility>
-bool compare(const char * a,const char *b)
-{
-    bool result = true;
-    for (; *a!='\0'&&*b!='\0';a++,b++) {
-        if (*a != *b)
-        {
-            result = false;
-            break;
-        }
-    }
-    if (!(*a=='\0'&&*b=='\0'))
-        result= false;
-    return result;
-}
+
+
 bool database::init() {
     if(!readFromFile())
     {
@@ -32,33 +16,38 @@ bool database::init() {
     return true;
 }
 
-bool database::addValue(std::string t_key, std::string t_value) {
+bool database::addValue(const std::string& targetKey, const std::string& targetValue) {
     pthread_mutex_lock(&Locker);
-    int index = search(t_key);
+    int index = search(targetKey);
     pthread_mutex_unlock(&Locker);
     if (index==-1) {
         pthread_mutex_lock(&Locker);
-        keys.emplace_back(t_key.data());
-        values.emplace_back(t_value.data());
+        keys.emplace_back(targetKey);
+        values.emplace_back(targetValue);
         pthread_mutex_unlock(&Locker);
     } else
     {
-        if (compare(values.at(index).data(),t_value.data())) {
-            log(warning,"待写入的数据: "+t_value+" 已经存在!");
+        if (values.at(index) == targetValue) {
+            log(warning, "待写入的数据: " + targetValue + " 已经存在!");
         }
         else {
-            log(warning,"原数据: "+values.at(index)+" 将会替换成: "+t_value);
+            log(warning, "原数据: " + values.at(index) + " 将会替换成: " + targetValue);
             pthread_mutex_lock(&Locker);
-            values.at(index) = t_value;
+            values.at(index) = targetValue;
             pthread_mutex_unlock(&Locker);
         }
     }
     return true;
 }
 
-std::string database::getValue(std::string t_key) {
+std::string database::getValue(const std::string& targetKey)
+/*
+ * description: 用于获取Key对应的Value
+ * return: 出错时会返回空的std::string，成功时会返回Value
+ */
+{
     pthread_mutex_lock(&Locker);
-    int i = search(std::move(t_key));
+    int i = search(targetKey);
     std::string result;
     if (i == -1)
         return result;
@@ -68,25 +57,25 @@ std::string database::getValue(std::string t_key) {
 }
 
 bool database::readFromFile() {
-    std::ifstream keys_on_file;
-    keys_on_file.open("datas.dat",std::ios_base::in|std::ios_base::binary);
-    if(!keys_on_file.is_open())
+    std::ifstream file;
+    file.open("datas.dat", std::ios_base::in | std::ios_base::binary);
+    if(!file.is_open())
         return false;
     while (true)
     {
         uint32_t size;
         std::string value,key;
-        keys_on_file.read(reinterpret_cast<char *>(&size),4);
+        file.read(reinterpret_cast<char *>(&size), 4);
         key.resize(size);
         if (size<=0)
             break;
         else
         {
-            keys_on_file.read(const_cast<char *>(key.data()),size);
+            file.read(const_cast<char *>(key.data()), size);
         }
 
         keys.emplace_back(key);
-        keys_on_file.read(reinterpret_cast<char *>(&size),4);
+        file.read(reinterpret_cast<char *>(&size), 4);
         if (size<=0) {
             log(error,"文件不完整！");
             values.emplace_back("null");
@@ -95,18 +84,18 @@ bool database::readFromFile() {
         else
         {
             value.resize(size);
-            keys_on_file.read(const_cast<char *>(value.data()), size);
+            file.read(const_cast<char *>(value.data()), size);
         }
         values.emplace_back(value);
         log(info,"已从文件中读取: key="+key+"value="+value);
         key.clear();
         value.clear();
     }
-    keys_on_file.close();
+    file.close();
     return true;
 }
 
-bool database::deleteValue(std::string t_key) {
+bool database::deleteValue(const std::string& t_key) {
     pthread_mutex_lock(&Locker);
     int index = search(t_key);
     if (index==-1)
@@ -147,7 +136,7 @@ bool database::saveToFile() {
 }
 
 
-int database::search(std::string target) {
+int database::search(const std::string& target) {
     uint32_t size = keys.size();
     for (int i = 0; i < size; ++i) {
         if (keys.at(i)==target)
@@ -157,5 +146,3 @@ int database::search(std::string target) {
     }
     return -1;
 }
-
-#pragma clang diagnostic pop

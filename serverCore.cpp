@@ -1,5 +1,5 @@
 //
-// Created by 徐鑫平 on 2022/12/16.
+// Created by 神奇bug在哪里 on 2022/12/16.
 //
 
 
@@ -10,11 +10,10 @@
 extern std::vector<pid_t> runningProcess;
 extern serverSocket *p_target_server;
 
-/* macOS/Linux 在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
 void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
 }
-
+/* macOS/Linux 在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
 bool serverSocket::init(short port, database &datas) {
     data = datas;
     //delete &temp;  //释放掉为了规避c++的限制而使用的临时对象
@@ -69,7 +68,7 @@ bool serverSocket::init(short port, database &datas) {
     int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     /* 创建epoll结构体并注册事件，准备用来阻塞 */
     runningProcess.resize(PROCESS_SIZE);
-    for (int i = 0; i < PROCESS_SIZE ; ++i) {
+    for (int i = 0; i < PROCESS_SIZE; ++i) {
         pid_t pid = fork();
         if (pid != 0) {
             runningProcess.at(i) = pid;
@@ -112,7 +111,7 @@ bool serverSocket::process(int target_sock_id, uint32_t type) {
         }
     } else if (type == 1) {
         log(info, "收到delete请求!", target_sock_id);
-        if (!aDelete(target_sock_id)) {
+        if (!deleteData(target_sock_id)) {
             log(error, "删除键值对失败！");
             return false;
         }
@@ -133,79 +132,79 @@ void serverSocket::stop() const {
     }
 }
 
-bool serverSocket::get(int target_sock_id) {
+bool serverSocket::get(int targetSockId) {
     uint32_t size;
-    read(target_sock_id, &size, 4);
     std::string key;
+    bool sendResult;
+
+    if (read(targetSockId, &size, 4) < 0) {
+        log(error, "读取boay: size失败！", targetSockId);
+        return false;
+    }
     key.resize(size);
-    long real_size = read(target_sock_id, const_cast<char *>(key.data()), size);
+    long real_size = read(targetSockId, const_cast<char *>(key.data()), size);
     /* 这里不知道为什么要用常转换 */
     if (real_size < 0) {
-        log(error, "读取Key出现错误!", target_sock_id);
+        log(error, "读取Key出现错误!", targetSockId);
         key.clear();
         return false;
     } else if (real_size != size) {
-        log(error, "读取到的Key大小异常!", target_sock_id);
+        log(error, "读取到的Key大小异常!", targetSockId);
         key.clear();
         return false;
     }
     std::string value = data.getValue(key);
     if (value.empty()) {
-        send(target_sock_id, "null", 5, MSG_NOSIGNAL);
+        send(targetSockId, "null", 5, MSG_NOSIGNAL);
         return false;
     }
-    if (!sendHeader(target_sock_id, sizeof(uint32_t) + value.size(), 5)) {
-        log(error, "head数据发送失败！", target_sock_id);
+    if (!sendHeader(targetSockId, sizeof(uint32_t) + value.size(), 5)) {
+        log(error, "head数据发送失败！", targetSockId);
         return false;
     }
-    log(info, "head数据发送成功！", target_sock_id);
-    uint32_t value_size = value.size();
-    //usleep(300000);
-    if (send(target_sock_id, &value_size, 4, MSG_NOSIGNAL) != 4) {
-        log(error, "body:size数据发送失败!");
-        return false;
-    }
-    if (send(target_sock_id, const_cast<char *>(value.data()), value_size, MSG_NOSIGNAL) != value_size) {
-        log(error, "body:value数据发送失败!");
-        return false;
-    }
+    log(info, "head数据发送成功！", targetSockId);
+    uint32_t valueSize = value.size();
+    sendResult = sendField(targetSockId, &valueSize, 4, MSG_NOSIGNAL);
+    sendResult = sendResult && sendField(targetSockId, const_cast<char *>(value.data()), valueSize, MSG_NOSIGNAL);
     log(info, "返回的数据: value = " + value);
-    return true;
+    return sendResult;
 }
 
-bool serverSocket::aDelete(int target_sock_id) {
+bool serverSocket::deleteData(int targetSockId) {
     uint32_t size;
-    if (read(target_sock_id, &size, 4) < 0) {
+    if (read(targetSockId, &size, 4) < 0) {
         log(error, "读取数据大小失败!");
         return false;
     }
-    std::string target_key;
-    target_key.resize(size);
-    if (read(target_sock_id, const_cast<char *>(target_key.data()), size) != size) {
+    std::string targetKey;
+    targetKey.resize(size);
+    if (read(targetSockId, const_cast<char *>(targetKey.data()), size) != size) {
         log(error, "读取key内容失败!");
         return false;
     }
-    /*
-     * 完成数据读取
-     */
+    /* 数据读取部分结束 */
     bool result;
-    result = data.deleteValue(target_key);
-    if (!sendHeader(target_sock_id, 1, 4)) {
+    result = data.deleteValue(targetKey);
+    if (!sendHeader(targetSockId, 1, 4)) {
         log(error, "发送head失败!");
         return false;
     }
-    //usleep(300000);
-    sendField(target_sock_id, &result, 1, MSG_NOSIGNAL);
-    return true;
+
+    return sendField(targetSockId, &result, 1, MSG_NOSIGNAL);
 }
 
-bool serverSocket::sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra) {
+bool serverSocket::sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra)
+/*
+ * description: 用来发送每一个Field的数据,会检查read函数的返回值，这样做是为了减少重复的代码数量
+ * return: 是否成功
+ */
+{
     if (send(target_sock_id, data_to_send, size, extra) != size) {
         log(error, "发送body失败！");
         return false;
-    } else {
+    } else
         return true;
-    }
+
 
 }
 
@@ -282,8 +281,3 @@ bool serverSocket::sendHeader(int target_sock_id, uint32_t full_size, uint32_t t
     return result;
 }
 
-void childExit(int singleNumber) {
-    log(info, "子进程已收到退出信号", singleNumber);
-    p_target_server->stop();
-    exit(0);
-}

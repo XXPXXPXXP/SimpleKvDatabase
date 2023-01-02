@@ -1,24 +1,22 @@
 ﻿//
-// Created by 徐鑫平 on 2022/12/16.
+// Created by 神奇bug在哪里 on 2022/12/16.
 //
 
 #ifndef FINAL_PROJECT_SERVERCORE_H
 #define FINAL_PROJECT_SERVERCORE_H
 
-#include <ctime>
 /* 该分支不再能在mac上可用 */
 #include <netinet/in.h>
-#include <sys/types.h>
 #include <deque>
 #include "serverLog.h"
 #include "database.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
-/* 这是epoll的版本 */
 #include <sys/epoll.h>
+/* 这是epoll的分支，所以自然就使用epoll啦 */
 #include <csignal>
-#include <unistd.h>
 #include <cstring>
+/* 为了能够使用memset */
 #include <string>
 
 class serverSocket {
@@ -36,13 +34,11 @@ public:
 
     bool process(int target_sock_id, uint32_t type);
 
-    bool get(int target_sock_id);
+    bool get(int targetSockId);
 
-    bool aDelete(int target_sock_id);
+    bool deleteData(int targetSockId);
     bool isChild() const{return child;}
-    bool add(int target_sock_id);
-
-    int id() const { return listenSockId; };
+    bool add(int target_sock_id);;
 
     static bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type);
 
@@ -57,7 +53,4 @@ public:
 };
 
 void cleanUpAll(int singleNumber);
-
-void childExit(int singleNumber);
-
 #endif //FINAL_PROJECT_SERVERCORE_H
