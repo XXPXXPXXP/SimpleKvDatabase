@@ -1,0 +1,7 @@
+# ninja log v5
+1	360	1672593128229533646	CMakeFiles/Final_project.dir/serverLog.cpp.o	3f6ad04cd73d9c20
+1	578	1672593128445525435	CMakeFiles/Final_project.dir/serverCore.cpp.o	fc7dfd1f70669e73
+1	522	1672593128389527564	CMakeFiles/Final_project.dir/main.cpp.o	b4473afdffe6d915
+2	660	1672591217021746383	CMakeFiles/Final_project.dir/workThread.cpp.o	d10deb97e8b549ad
+2	511	1672593128381527868	CMakeFiles/Final_project.dir/database.cpp.o	114d48d2a88dd855
+763	816	1672591217177734554	Final_project	a3b591182682db12
