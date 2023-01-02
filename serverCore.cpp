@@ -155,7 +155,7 @@ bool serverSocket::get(int targetSockId) {
     }
     std::string value = data.getValue(key);
     if (value.empty()) {
-        send(targetSockId, "null", 5, MSG_NOSIGNAL);
+        sendField(targetSockId, const_cast<char *>("null"), 5, MSG_NOSIGNAL);
         return false;
     }
     if (!sendHeader(targetSockId, sizeof(uint32_t) + value.size(), 5)) {
@@ -204,8 +204,6 @@ bool serverSocket::sendField(int target_sock_id, void *data_to_send, uint32_t si
         return false;
     } else
         return true;
-
-
 }
 
 bool serverSocket::add(int target_sock_id) {
