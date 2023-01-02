@@ -23,19 +23,19 @@
 class serverSocket{
 private:
     int listenSockId = -1;
-    bool isInit = false;
     struct sockaddr_in ipConfig;
     database temp;
     database & data = temp;
+
 public:
     bool init(short port, database &datas);
     /* 默认端口采用1433，也就是SQL的默认端口 */
-    bool startListen();
+    [[noreturn]]   void startServer();
     bool process(int target_sock_id, uint32_t type);
-    bool process_get(int target_sock_id);
-    bool process_delete(int target_sock_id);
-    bool process_add(int target_sock_id);
-    static bool send_header(int target_sock_id, uint32_t full_size, uint32_t type) ;
+    bool get(int target_sock_id);
+    bool aDelete(int target_sock_id);
+    bool add(int target_sock_id);
+    static bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type) ;
     ~serverSocket()
     {
         log(warning,"server触发了回收!");
@@ -44,7 +44,7 @@ public:
 
     void stop() const;
 
-    static bool send_safe(int target_sock_id, void *data_to_send, uint32_t size, int extra);
+    static bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra);
 };
-void cleanup( int signum);
+void cleanUpAll(int singleNumber);
 #endif //FINAL_PROJECT_SERVERCORE_H

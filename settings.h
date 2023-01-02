@@ -6,6 +6,7 @@
 #define FINAL_PROJECT_SETTINGS_H
 
 #define MAX_SOCKET 100
+#define PROCESS_SIZE 4
 #define MAX_EPOLL 100
 #define SERVER_PORT 1434
 #define GLOBAL_LOG_LEVEL warning

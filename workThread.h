@@ -7,29 +7,25 @@
 #include <vector>
 #include "serverCore.h"
 class threadsPool {
-    std::vector<pthread_t> runningThreads;
-    int workersTasksCount;
-    struct kevent * watchList;
-    struct kevent * eventList;
     pthread_mutex_t taskLocker;
+    std::vector<pthread_t> runningThreads;
     int kId;
 public:
-    void createThreadPool(int maxThread, serverSocket *server);
-    [[noreturn]] static void * threadWorker(void *args);
-    static void * process_theard(void * args);
-    void producerConsumerMode(int targetSockId, serverSocket *server);
-    void addTasks(int targetId);
+
+    static void * worker(void * args);
+    void start(int targetSockId, serverSocket *server);
+
     ~threadsPool(){
         pthread_mutex_destroy(&taskLocker);
         log(warning,"线程池正在被回收！");
     }
 };
-struct argsPcMode
+struct argsNtMode
 {
     int sockID;
     serverSocket * server;
 };
-struct argsTpMode
+struct args
 {
     threadsPool * _this;
     serverSocket * server;
