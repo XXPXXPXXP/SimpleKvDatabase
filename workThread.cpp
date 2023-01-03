@@ -1,5 +1,5 @@
 //
-// Created by 徐鑫平 on 2022/12/29.
+// Created by 神奇bug在哪里 on 2022/12/29.
 //
 #include "workThread.h"
 #include <thread>

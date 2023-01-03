@@ -1,7 +1,7 @@
 #pragma ide diagnostic ignored "performance-inefficient-string-concatenation"
 #pragma ide diagnostic ignored "performance-unnecessary-value-param"
 //
-// Created by 徐鑫平 on 2022/12/24.
+// Created by 神奇bug在哪里 on 2022/12/24.
 //
 #include "database.h"
 #include <fstream>
