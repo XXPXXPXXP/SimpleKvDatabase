@@ -3,7 +3,7 @@
 //
 
 
-#include "server_core.h"
+#include "serverCore.h"
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "UnreachableCode"
 /* macOS在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
@@ -11,21 +11,21 @@ void pipe_handle(int)
 {
     log(error,"socket发生了异常关闭！");
 }
-bool server_socket::init(short port, database &datas) {
+bool serverSocket::init(short port, database &datas) {
     data = datas;
     //delete &temp;  //释放掉为了规避c++的限制而使用的临时对象
-    sock_id = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock_id == -1)
+    listenSockId = socket(AF_INET, SOCK_STREAM, 0);
+    if (listenSockId == -1)
     {
         log(error,"socket init error!");
         return false;
     }
     /* 创建基本的socket */
-    memset(&socket_ip_config, 0, sizeof(socket_ip_config)); //对地址结构体填充0,避免无关数据干扰
-    socket_ip_config.sin_family = AF_INET;//IPv4
-    socket_ip_config.sin_port = htons(port);
-    socket_ip_config.sin_addr.s_addr = inet_addr("0.0.0.0");//绑定IP为0.0.0.0，接受来自任何IP的访问
-    if (bind(sock_id, (struct sockaddr *)&socket_ip_config, sizeof(socket_ip_config)) < 0)
+    memset(&ipConfig, 0, sizeof(ipConfig)); //对地址结构体填充0,避免无关数据干扰
+    ipConfig.sin_family = AF_INET;//IPv4
+    ipConfig.sin_port = htons(port);
+    ipConfig.sin_addr.s_addr = inet_addr("0.0.0.0");//绑定IP为0.0.0.0，接受来自任何IP的访问
+    if (bind(listenSockId, (struct sockaddr *)&ipConfig, sizeof(ipConfig)) < 0)
     {
         log(error,"bind error!");
         return false;
@@ -36,9 +36,9 @@ bool server_socket::init(short port, database &datas) {
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "ConstantFunctionResult"
 /* 所以采用kqueue进行阻塞 */
-bool server_socket::start_listen() {
+bool serverSocket::startListen() {
     log(info,"Trying startup listening....");
-    if(listen(sock_id, 100) < 0)
+    if(listen(listenSockId, 100) < 0)
     {
         log(error,"listen startup error!");
         return false;
@@ -54,7 +54,7 @@ bool server_socket::start_listen() {
     socklen_t len;
     watch_list = (struct kevent*)malloc(sizeof(struct kevent));
     tigger_list = (struct kevent*)malloc(sizeof(struct kevent) * 100);
-    EV_SET(watch_list,sock_id,EVFILT_READ,EV_ADD|EV_ENABLE,0,0,0);	//注册事件
+    EV_SET(watch_list,listenSockId,EVFILT_READ,EV_ADD|EV_ENABLE,0,0,0);	//注册事件
     log(info,"kqueue队列完成初始化");
     /* 注册信号处理函数SIGPIPE(用于解决一些奇怪的问题) */
     signal(SIGPIPE, pipe_handle);
@@ -74,8 +74,8 @@ bool server_socket::start_listen() {
                     log(error,"触发队列出现错误！");
                     return false;
                 }
-                if(tigger_list[i].ident==sock_id){
-                    int tigger_sock_id = accept(sock_id, nullptr, nullptr);	// 传入的主机地址
+                if(tigger_list[i].ident==listenSockId){
+                    int tigger_sock_id = accept(listenSockId, nullptr, nullptr);	// 传入的主机地址
                     if(tigger_sock_id==-1){
                         log(error,"accept error!");
                         return false;
@@ -126,7 +126,7 @@ bool server_socket::start_listen() {
 }
 #pragma clang diagnostic pop
 
-bool server_socket::process(int target_sock_id, uint32_t type) {
+bool serverSocket::process(int target_sock_id, uint32_t type) {
     if (type == 0)
     {
         log(info,"收到put请求!",target_sock_id);
@@ -148,7 +148,7 @@ bool server_socket::process(int target_sock_id, uint32_t type) {
     else if (type == 2)
     {
         log(info,"收到get请求！",target_sock_id);
-        if(!process_get(target_sock_id))
+        if(!processGet(target_sock_id))
         {
             log(error,"查找键值对失败！");
             return false;
@@ -157,14 +157,18 @@ bool server_socket::process(int target_sock_id, uint32_t type) {
     return true;
 }
 
-void server_socket::stop() const {
-    close(sock_id);
-    data.save_to_file();
+void serverSocket::stop() const {
+    close(listenSockId);
+    data.saveToFile();
 }
 
-bool server_socket::process_get(int target_sock_id) {
+bool serverSocket::processGet(int target_sock_id) {
     uint32_t size;
-    read(target_sock_id,&size,4);
+    if (read(target_sock_id,&size,4)!=size)
+    {
+        log(error,"body: size发送失败！");
+        return false;
+    }
     std::string key;
     key.resize(size);
     long real_size = read(target_sock_id,const_cast<char *>(key.data()),size);
@@ -181,13 +185,13 @@ bool server_socket::process_get(int target_sock_id) {
         key.clear();
         return false;
     }
-    std::string value = data.get_value(key);
-    if(value.empty())
+    std::string getValue = data.getValue(key);
+    if(getValue.empty())
     {
         send(target_sock_id,"null",5,MSG_NOSIGNAL);
         return false;
     }
-    uint32_t value_size = value.size();
+    uint32_t value_size = getValue.size();
     if(!send_header(target_sock_id, sizeof(uint32_t) + value_size, 5))
     {
         log(error,"head数据发送失败！",target_sock_id);
@@ -200,17 +204,17 @@ bool server_socket::process_get(int target_sock_id) {
         log(error,"body:size数据发送失败!");
         return false;
     }
-    if (send(target_sock_id,value.data(),value_size,MSG_NOSIGNAL)!=value_size)
+    if (send(target_sock_id, getValue.data(), value_size, MSG_NOSIGNAL) != value_size)
     {
         log(error,"body:value数据发送失败!");
         return false;
     }
     logh(info);
-    printf("返回的数据: value = %s\n",value.c_str());
+    printf("返回的数据: getValue = %s\n", getValue.c_str());
     return true;
 }
 
-bool server_socket::process_delete(int target_sock_id) {
+bool serverSocket::process_delete(int target_sock_id) {
     uint32_t size;
     if(read(target_sock_id,&size,4)<0)
     {
@@ -228,7 +232,7 @@ bool server_socket::process_delete(int target_sock_id) {
      * 完成数据读取
      */
     bool result;
-    result = data.delete_value(target_key);
+    result = data.deleteValue(target_key);
     //usleep(300000);
     if(!send_header(target_sock_id,1,4)) {
         log(error, "发送head失败!");
@@ -239,7 +243,7 @@ bool server_socket::process_delete(int target_sock_id) {
     return true;
 }
 
-bool server_socket::send_safe(int target_sock_id, void *data_to_send, uint32_t size, int extra) {
+bool serverSocket::send_safe(int target_sock_id, void *data_to_send, uint32_t size, int extra) {
     if (send(target_sock_id, data_to_send, size, extra) != size) {
         log(error, "发送body失败！");
         return false;
@@ -250,7 +254,7 @@ bool server_socket::send_safe(int target_sock_id, void *data_to_send, uint32_t s
 
 }
 
-bool server_socket::process_add(int target_sock_id) {
+bool serverSocket::process_add(int target_sock_id) {
     /*
      * description: 用于添加键值对数据
      */
@@ -280,7 +284,7 @@ bool server_socket::process_add(int target_sock_id) {
         return false;
     }
 
-    if(data.add_value(target_key,target_value))
+    if(data.addValue(target_key,target_value))
     {
         log(info,"键值对成功保存!",target_sock_id);
         send_header(target_sock_id,1,3);
@@ -302,7 +306,7 @@ bool server_socket::process_add(int target_sock_id) {
     }
 }
 
-bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t type) {
+bool serverSocket::send_header(int target_sock_id, uint32_t full_size, uint32_t type) {
     /*
      * 描述：用于发送response的头部数据
      * 返回值: 是否发送成功
@@ -328,11 +332,8 @@ bool server_socket::send_header(int target_sock_id, uint32_t full_size, uint32_t
      * description: body的大小
      */
     result = result && send_safe(target_sock_id, &full_size, 4, MSG_NOSIGNAL);
-    //usleep(1000);
     result = result && send_safe(target_sock_id, &type, 4, MSG_NOSIGNAL);
-    //usleep(1000);
     result = result && send_safe(target_sock_id, &padding, 4, MSG_NOSIGNAL);
-    //usleep(1000);
     return result;
 }
 
