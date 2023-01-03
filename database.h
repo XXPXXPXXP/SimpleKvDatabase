@@ -10,7 +10,6 @@
 
 class database{
 private:
-    size_t obj_count=0;
     std::deque<std::string> keys;
     std::deque<std::string> values;
     pthread_mutex_t Locker;

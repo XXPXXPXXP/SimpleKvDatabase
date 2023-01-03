@@ -42,7 +42,7 @@ bool serverSocket::startListen() {
         return false;
     }
     /* 启动线程池 */
-    threads_pool pool;
+    threadsPool pool;
     listenWatchList = (struct kevent *) malloc(sizeof(struct kevent));
     listenTiggerList = (struct kevent *) malloc(sizeof(struct kevent) * 100);
     //pool.createThreadPool(8, this);

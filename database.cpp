@@ -23,8 +23,8 @@ bool database::addValue(std::string t_key, std::string t_value) {
     pthread_mutex_unlock(&Locker);
     if (index==-1) {
         pthread_mutex_lock(&Locker);
-        keys.emplace_back(t_key.data());
-        values.emplace_back(t_value.data());
+        keys.emplace_back(t_key);
+        values.emplace_back(t_value);
         pthread_mutex_unlock(&Locker);
     } else
     {

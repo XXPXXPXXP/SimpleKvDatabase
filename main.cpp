@@ -7,7 +7,7 @@
 #include "main.h"
 
 
-int main(int argc, const char * argv[]) {
+int main() {
     database datas;
     datas.init();
     serverSocket target_server;

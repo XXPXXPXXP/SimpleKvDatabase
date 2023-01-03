@@ -24,7 +24,6 @@
 class serverSocket{
 private:
     int listenSockId = -1;
-    bool isInit = false;
     struct sockaddr_in ipConfig;
     database temp;
     struct kevent *listenWatchList,*listenTiggerList;
