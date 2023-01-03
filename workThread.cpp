@@ -62,18 +62,15 @@ void threads_pool::createThreadPool(int maxThread, serverSocket *server) {
                 }
                 log(info, "magicNumber校验通过");
                 if (read(targetSockId, (char *) &size, 4) <= 0) {
-                    logh(error);
-                    printf("无法读取Size!\t[id]: %d\n", targetSockId);
+                    log(error,"无法读取Size!",targetSockId);
                     continue;
                 }
                 if (read(targetSockId, (char *) &type, 4) <= 0) {
-                    logh(error);
-                    printf("无法读取Type!\t[id]: %d\n", targetSockId);
+                    log(error,"无法读取Type!",targetSockId);
                     continue;
                 }
                 if (read(targetSockId, (char *) &rubbish, 4) <= 0) {
-                    logh(error);
-                    printf("无法读取Padding!\t[id]: %d\n", targetSockId);
+                    log(error,"无法读取Padding!",targetSockId);
                     continue;
                 }
                 log(info, "header信息成功接收", targetSockId);
@@ -122,18 +119,15 @@ void *threads_pool::process_theard(void * args) {
         }
         log(info, "magicNumber校验通过",targetSockId);
         if (read(targetSockId, (char *) &size, 4) <= 0) {
-            logh(error);
-            printf("无法读取Size!\t[id]: %d\n", targetSockId);
+            log(error,"无法读取Size!", targetSockId);
             continue;
         }
         if (read(targetSockId, (char *) &type, 4) <= 0) {
-            logh(error);
-            printf("无法读取Type!\t[id]: %d\n", targetSockId);
+            log(error,"无法读取Type!",targetSockId);
             continue;
         }
         if (read(targetSockId, (char *) &rubbish, 4) <= 0) {
-            logh(error);
-            printf("无法读取Padding!\t[id]: %d\n", targetSockId);
+            log(error,"无法读取Padding!",targetSockId);
             continue;
         }
         log(info, "header信息成功接收", targetSockId);

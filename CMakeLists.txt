@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 project(Final_project)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 add_executable(Final_project main.cpp serverCore.cpp serverCore.h main.h serverLog.h serverLog.cpp database.h database.cpp workThread.cpp)
 add_executable(client_test client.cpp client.hpp)

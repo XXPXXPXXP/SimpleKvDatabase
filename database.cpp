@@ -6,20 +6,7 @@
 #include "database.h"
 #include <fstream>
 #include <utility>
-bool compare(const char * a,const char *b)
-{
-    bool result = true;
-    for (; *a!='\0'&&*b!='\0';a++,b++) {
-        if (*a != *b)
-        {
-            result = false;
-            break;
-        }
-    }
-    if (!(*a=='\0'&&*b=='\0'))
-        result= false;
-    return result;
-}
+
 bool database::init() {
     if(!readFromFile())
     {
@@ -41,13 +28,11 @@ bool database::addValue(std::string t_key, std::string t_value) {
         pthread_mutex_unlock(&Locker);
     } else
     {
-        if (compare(values.at(index).data(),t_value.data())) {
-            logh(warning);
-            printf("待写入的数据: %s 已经存在!\n",t_value.data());
+        if (values.at(index)==t_value) {
+            log(warning,"待写入的数据: " + t_value + " 已经存在!");
         }
         else {
-            logh(warning);
-            printf("原数据: %s ,将替换为: %s !",values.at(index).data(),t_value.data());
+            log(warning,"原数据: "+values.at(index)+" ,将替换为: " +t_value+" !");
             pthread_mutex_lock(&Locker);
             values.at(index) = t_value;
             pthread_mutex_unlock(&Locker);

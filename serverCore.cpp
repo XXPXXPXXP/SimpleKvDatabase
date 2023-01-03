@@ -87,39 +87,7 @@ bool serverSocket::startListen() {
                      //pool.addTasks(targetSockId);
                      /* 临时使用线程处理模式 */
                     pool.producerConsumerMode(targetSockId, this);
-                    /* 采用单线程来进行accept  */
-                    /* 以下是单线程处理的代码 */
-//                    uint32_t magic_number;
-//                    while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
-//                    {
-//                        //准备读取header数据
-//                        uint32_t size, type, rubbish;
-//                        if (magic_number != 1234) {
-//                            log(warning, "MagicNumber不匹配！");
-//                            continue;
-//                        }
-//                        log(info, "magicNumber校验通过");
-//                        if (read(targetSockId, (char *) &size, 4) <= 0) {
-//                            logh(error);
-//                            printf("无法读取Size!\t[id]: %d\n", targetSockId);
-//                            continue;
-//                        }
-//                        if (read(targetSockId, (char *) &type, 4) <= 0) {
-//                            logh(error);
-//                            printf("无法读取Type!\t[id]: %d\n", targetSockId);
-//                            continue;
-//                        }
-//                        if (read(targetSockId, (char *) &rubbish, 4) <= 0) {
-//                            logh(error);
-//                            printf("无法读取Padding!\t[id]: %d\n", targetSockId);
-//                            continue;
-//                        }
-//                        log(info, "header信息成功接收", targetSockId);
-//                        process(targetSockId, type);
-//                        log(info, "数据已完成处理!");
-//                    }
-//                    close(targetSockId);
-//                    log(info, "当前sock连接已断开!", targetSockId);
+                    /* 采用单进程来进行accept  */
                 }
             }
         }

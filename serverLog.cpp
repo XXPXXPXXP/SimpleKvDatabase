@@ -16,11 +16,6 @@ void log(enum log_level level, const std::string &context,int id) {
         std::cout << context << "\t[ID]: " << id << std::endl;
     }
 }
-void logh(enum log_level level)
-{
-    if (level >= global_log_level)
-        std::cout << (level == info ? "[I] " : (level == warning ? "[W] " : "[E] "));
-}
 
 void log(enum log_level level, int i, const std::string &context, int id) {
     if (level >= global_log_level) {
