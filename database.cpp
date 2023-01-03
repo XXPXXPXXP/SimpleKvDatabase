@@ -1,4 +1,3 @@
-#pragma clang diagnostic push
 #pragma ide diagnostic ignored "performance-inefficient-string-concatenation"
 #pragma ide diagnostic ignored "performance-unnecessary-value-param"
 //
@@ -6,7 +5,6 @@
 //
 #include "database.h"
 #include <fstream>
-#include <cstdlib>
 #include <utility>
 bool compare(const char * a,const char *b)
 {
@@ -152,20 +150,6 @@ bool database::saveToFile() {
 int database::search(std::string target) {
     uint32_t size = keys.size();
     for (int i = 0; i < size; ++i) {
-//        char * a = keys.at(i).data();
-//        char * b = target.data();
-//        bool flag = true;
-//        for (;*a!='\0'&&*b!='\0';a++,b++) {
-//            if (*a!=*b)
-//            {
-//                flag = false;
-//                break;
-//            }
-//        }
-//        if (!(*a=='\0'&&*b=='\0'))
-//            flag = false;
-//        if (flag)
-//            return i;
         if (keys.at(i)==target)
         {
             return i;
@@ -173,5 +157,3 @@ int database::search(std::string target) {
     }
     return -1;
 }
-
-#pragma clang diagnostic pop

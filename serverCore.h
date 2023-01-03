@@ -12,7 +12,6 @@
 #include <kqueue/sys/event.h>
 #include <cstring>
 #include <string>
-//#include <MacTypes.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <deque>
@@ -35,7 +34,7 @@ public:
     /* 默认端口采用1433，也就是SQL的默认端口 */
     bool startListen();
     bool process(int target_sock_id, uint32_t type);
-    bool process_get(int target_sock_id);
+    bool process_get(int targetSockId);
     bool process_delete(int target_sock_id);
     bool process_add(int target_sock_id);
     static bool send_header(int target_sock_id, uint32_t full_size, uint32_t type) ;

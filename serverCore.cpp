@@ -155,39 +155,42 @@ bool serverSocket::startListen() {
         data.saveToFile();
     }
 
-    bool serverSocket::process_get(int target_sock_id) {
+    bool serverSocket::process_get(int targetSockId) {
         uint32_t size;
-        read(target_sock_id, &size, 4);
+        if(read(targetSockId, &size, 4) != 4)
+        {
+            log(error, "body: 读取size失败！", targetSockId);
+        }
         std::string key;
         key.resize(size);
-        long real_size = read(target_sock_id, const_cast<char *>(key.data()), size);
+        long real_size = read(targetSockId, const_cast<char *>(key.data()), size);
         /* 这里不知道为什么要用常转换 */
         if (real_size < 0) {
-            log(error, "读取Key出现错误!", target_sock_id);
+            log(error, "读取Key出现错误!", targetSockId);
             key.clear();
             return false;
         } else if (real_size != size) {
-            log(error, "读取到的Key大小异常!", target_sock_id);
+            log(error, "读取到的Key大小异常!", targetSockId);
             key.clear();
             return false;
         }
         std::string value = data.getValue(key);
         if (value.empty()) {
-            send(target_sock_id, "null", 5, MSG_NOSIGNAL);
+            send(targetSockId, "null", 5, MSG_NOSIGNAL);
             return false;
         }
-        if (!send_header(target_sock_id, sizeof(uint32_t) + value.size(), 5)) {
-            log(error, "head数据发送失败！", target_sock_id);
+        if (!send_header(targetSockId, sizeof(uint32_t) + value.size(), 5)) {
+            log(error, "head数据发送失败！", targetSockId);
             return false;
         }
-        log(info, "head数据发送成功！", target_sock_id);
+        log(info, "head数据发送成功！", targetSockId);
         uint32_t value_size = value.size();
         //usleep(300000);
-        if (send(target_sock_id, &value_size, 4, MSG_NOSIGNAL) != 4) {
+        if (send(targetSockId, &value_size, 4, MSG_NOSIGNAL) != 4) {
             log(error, "body:size数据发送失败!");
             return false;
         }
-        if (send(target_sock_id, const_cast<char *>(value.data()), value_size, MSG_NOSIGNAL) != value_size) {
+        if (send(targetSockId, const_cast<char *>(value.data()), value_size, MSG_NOSIGNAL) != value_size) {
             log(error, "body:value数据发送失败!");
             return false;
         }
