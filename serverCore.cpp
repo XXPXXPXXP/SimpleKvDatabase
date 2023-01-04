@@ -69,7 +69,7 @@ bool serverSocket::init(short port, database &datas) {
     /* 创建epoll结构体并注册事件，准备用来阻塞 */
     runningProcess.resize(PROCESS_SIZE);
     for (int i = 0; i < PROCESS_SIZE; ++i) {
-        pid_t pid = fork();
+        pid_t pid = vfork();
         if (pid != 0) {
             runningProcess.at(i) = pid;
         } else {

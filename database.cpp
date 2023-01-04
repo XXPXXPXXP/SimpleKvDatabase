@@ -12,7 +12,6 @@ bool database::init() {
         log(warning,"读取数据文件失败！");
     }
     pthread_mutex_init(&Locker, nullptr);
-    pthread_mutex_init(&Locker, nullptr);
     return true;
 }
 
