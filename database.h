@@ -5,13 +5,11 @@
 #ifndef FINAL_PROJECT_DATABASE_H
 #define FINAL_PROJECT_DATABASE_H
 #include <deque>
+#include <map>
 #include "serverLog.h"
-
 class database{
 private:
-    size_t obj_count=0;
-    std::deque<std::string> keys;
-    std::deque<std::string> values;
+    std::map<std::string,std::string> datas;
     pthread_mutex_t Locker;
 public:
     bool init();
@@ -20,12 +18,9 @@ public:
     bool deleteValue(const std::string& t_key);
     bool saveToFile();
     bool readFromFile();
-    int search(const std::string& target);
     ~database(){
         log(warning,"Force exit tiggered!\nSaving datas now....");
         saveToFile();
     }
-
 };
-
 #endif //FINAL_PROJECT_DATABASE_H

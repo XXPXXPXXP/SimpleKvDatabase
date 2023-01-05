@@ -1,23 +1,20 @@
 //
 // Created by 神奇bug在哪里 on 2022/12/29.
 //
+#include "Socket.h"
 #include "workThread.h"
+#include <thread>
 
-
-void threadsPool::start(int targetSockId, serverSocket *server) {
+void threadsPool::start(int targetSockId, listener *server) {
     auto *args = new struct args;
     args->server = server;
     args->sockID = targetSockId;
-    runningThreads.resize(1);
-    if (pthread_create(&(runningThreads.at(0)), nullptr, worker, args)) {
-        log(error, "线程创建错误！", targetSockId);
-    }
+    std::thread workers(worker,targetSockId,server,&threadsCount);
+    log(info,"线程创建!");
+    threadsCount++;
 }
 
-void *threadsPool::worker(void *args) {
-    int targetSockId = reinterpret_cast<struct args *>(args)->sockID;
-    auto server = reinterpret_cast<struct args *>(args)->server;
-    delete reinterpret_cast<struct args *>(args);
+void *threadsPool::worker(int targetSockId, listener *server, std::atomic<int> *threadsCount) {
     /* 接收参数 */
     uint32_t magic_number;
     while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
@@ -43,13 +40,15 @@ void *threadsPool::worker(void *args) {
             continue;
         }
         log(info, "header信息成功接收", targetSockId);
-        server->process(targetSockId, type);
+        process(targetSockId, type);
         log(info, "数据已完成处理!");
     }
     /* 开始读取head */
     close(targetSockId);
     log(info, "当前sock连接已断开!", targetSockId);
-    return nullptr;
+    log(info,"线程退出！");
+    (*threadsCount)--;
+    exit(0);
     /* 断开连接并且释放资源 */
 }
 

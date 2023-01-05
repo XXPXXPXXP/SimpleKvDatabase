@@ -1,131 +1,19 @@
 //
-// Created by 神奇bug在哪里 on 2022/12/16.
+// Created by 神奇bug在哪里 on 2023/1/5.
 //
+#include <iostream>
+#include "serverLog.h"
+#include <sys/socket.h>
+#include <csignal>
+#include "Socket.h"
 
-
-#include "serverCore.h"
-#include "workThread.h"
-#include "settings.h"
-
-extern std::vector<pid_t> runningProcess;
-extern serverSocket *p_target_server;
-
-void pipeHandle(int) {
-    log(error, "socket发生了异常关闭！");
-}
-/* macOS/Linux 在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
-bool serverSocket::init(short port, database &datas) {
-    data = datas;
-    //delete &temp;  //释放掉为了规避c++的限制而使用的临时对象
-    listenSockId = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenSockId == -1) {
-        log(error, "socket init error!");
-        return false;
-    }
-    /* 创建基本的socket */
-    int opt_code = 1;
-    setsockopt(listenSockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code));
-    /* 设置端口复用 */
-    memset(&ipConfig, 0, sizeof(ipConfig)); //对地址结构体填充0,optional on macOS
-    ipConfig.sin_family = AF_INET;//IPv4
-    ipConfig.sin_port = htons(port);
-    ipConfig.sin_addr.s_addr = inet_addr("0.0.0.0");//绑定IP为0.0.0.0，接受来自任何IP的访问
-    /* 创建地址结构体 */
-    if (bind(listenSockId, (struct sockaddr *) &ipConfig, sizeof(ipConfig)) < 0) {
-        log(error, "bind error!");
-        return false;
-    }
-    log(info, "Trying startup listening....");
-    if (listen(listenSockId, MAX_SOCKET) < 0) {
-        log(error, "listen startup error!");
-        exit(errno);
-    }
-    /* 启动线程池 */
-    threadsPool pool{};
-    /* 准备创建epoll队列 */
-    listeningEpoll = epoll_create(1);
-    if (listeningEpoll == -1) {
-        log(error, "Listen: epoll队列无法创建！");
-        exit(errno);
-    }
-    /* 注册信号处理函数SIGPIPE(用于解决一些socket意外断开的问题) */
-    signal(SIGPIPE, pipeHandle);
-    listenEV.data.fd = listenSockId;
-    listenEV.events = EPOLLIN;  // 类似于 kqueue的 EV_READ
-    int ret = epoll_ctl(listeningEpoll, EPOLL_CTL_ADD, listenSockId, &listenEV);
-    if (ret == -1) {
-        log(error, "epoll_ctl error");
-        exit(errno);
-    }
-    /* 创建epoll结构体并注册事件，准备用来阻塞 */
-    return true;
-
-}
-
-[[noreturn]] void serverSocket::listen() {
-    /* 准备创建进程 */
-    int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
-    while (true) {
-        log(info, "开始阻塞");
-        int num = epoll_wait(listeningEpoll, listenEpollEvent, size, -1);
-        if (num < 1) {
-            log(error, "epoll队列异常！");
-            continue;
-        }
-        int targetSockId = accept(listenSockId, nullptr, nullptr);    // 传入的socket
-        if (targetSockId == -1) {
-            log(error, "accept error!");
-            continue;
-        }
-        log(info, "accept成功！", targetSockId);
-        struct timeval timeOut{};
-        timeOut.tv_sec = 3;
-        timeOut.tv_usec = 0;
-        /* 设置连接超时,防止连接卡服 */
-        setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
-        pool.start(targetSockId, this);
-        /* 采用多进程来进行accept,线程进行处理  */
-    }
-}
-
-
-bool serverSocket::process(int target_sock_id, uint32_t type) {
-    if (type == 0) {
-        log(info, "收到put请求!", target_sock_id);
-        if (!add(target_sock_id)) {
-            log(error, "添加键值对失败！");
-            return false;
-        }
-    } else if (type == 1) {
-        log(info, "收到delete请求!", target_sock_id);
-        if (!deleteData(target_sock_id)) {
-            log(error, "删除键值对失败！");
-            return false;
-        }
-    } else if (type == 2) {
-        log(info, "收到get请求！", target_sock_id);
-        if (!get(target_sock_id)) {
-            log(error, "查找键值对失败！");
-            return false;
-        }
-    }
-    return true;
-}
-
-void serverSocket::stop() const {
-    close(listenSockId);
-    if (!child) {
-        data.saveToFile();
-    }
-}
-
-bool serverSocket::get(int targetSockId) {
+bool get(int targetSockId) {
     uint32_t size;
     std::string key;
     bool sendResult;
 
     if (read(targetSockId, &size, 4) < 0) {
-        log(error, "读取boay: size失败！", targetSockId);
+        log(error, "读取body: size失败！", targetSockId);
         return false;
     }
     key.resize(size);
@@ -156,8 +44,29 @@ bool serverSocket::get(int targetSockId) {
     log(info, "返回的数据: value = " + value);
     return sendResult;
 }
-
-bool serverSocket::deleteData(int targetSockId) {
+bool process(int target_sock_id, uint32_t type) {
+    if (type == 0) {
+        log(info, "收到put请求!", target_sock_id);
+        if (!add(target_sock_id)) {
+            log(error, "添加键值对失败！");
+            return false;
+        }
+    } else if (type == 1) {
+        log(info, "收到delete请求!", target_sock_id);
+        if (!deleteData(target_sock_id)) {
+            log(error, "删除键值对失败！");
+            return false;
+        }
+    } else if (type == 2) {
+        log(info, "收到get请求！", target_sock_id);
+        if (!get(target_sock_id)) {
+            log(error, "查找键值对失败！");
+            return false;
+        }
+    }
+    return true;
+}
+bool deleteData(int targetSockId) {
     uint32_t size;
     if (read(targetSockId, &size, 4) < 0) {
         log(error, "读取数据大小失败!");
@@ -180,7 +89,7 @@ bool serverSocket::deleteData(int targetSockId) {
     return sendField(targetSockId, &result, 1, MSG_NOSIGNAL);
 }
 
-bool serverSocket::sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra)
+bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra)
 /*
  * description: 用来发送每一个Field的数据,会检查read函数的返回值，这样做是为了减少重复的代码数量
  * return: 是否成功
@@ -193,7 +102,7 @@ bool serverSocket::sendField(int target_sock_id, void *data_to_send, uint32_t si
         return true;
 }
 
-bool serverSocket::add(int target_sock_id) {
+bool add(int target_sock_id) {
     /*
      * description: 用于添加键值对数据
      */
@@ -236,7 +145,7 @@ bool serverSocket::add(int target_sock_id) {
     }
 }
 
-bool serverSocket::sendHeader(int target_sock_id, uint32_t full_size, uint32_t type) {
+bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type) {
     /*
      * 描述：用于发送response的头部数据
      * 返回值: 是否发送成功
@@ -265,4 +174,3 @@ bool serverSocket::sendHeader(int target_sock_id, uint32_t full_size, uint32_t t
     result = result && sendField(target_sock_id, &padding, 4, MSG_NOSIGNAL);
     return result;
 }
-

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
 project(Final_project)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
 
-add_executable(Final_project main.cpp serverCore.cpp serverCore.h serverLog.h serverLog.cpp database.h database.cpp workThread.cpp settings.h)
+add_executable(Final_project master.cpp listener.cpp listener.h serverLog.h serverLog.cpp database.h database.cpp workThread.cpp settings.h master.h Socket.h Socket.cpp)
 #add_executable(client_test client.cpp client.hpp)
 
-#target_link_libraries(Final_project libkqueue.so)
+target_link_libraries(Final_project boost)
