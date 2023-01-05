@@ -26,16 +26,19 @@ private:
     database temp;
     database &data = temp;
     bool child = false;
+    struct epoll_event listenEpollEvent[128];
+    struct epoll_event listenEV{};
+    int listeningEpoll;
 public:
     bool init(short port, database &datas);
 
     /* 默认端口采用1433，也就是SQL的默认端口 */
-    [[noreturn]]   void startServer();
+    [[noreturn]]   void listen();
 
     bool process(int target_sock_id, uint32_t type);
 
     bool get(int targetSockId);
-
+    void setChild(){child = true;}
     bool deleteData(int targetSockId);
     bool isChild() const{return child;}
     bool add(int target_sock_id);;

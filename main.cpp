@@ -18,7 +18,20 @@ int main() {
     p_target_server = &targetServer;
     targetServer.init(SERVER_PORT, datas);
     signal(SIGTERM, cleanUpAll); //注册信号处理函数
-    targetServer.startServer();
+    runningProcess.resize(PROCESS_SIZE);
+    for (int i = 0; i < PROCESS_SIZE; ++i) {
+        pid_t pid = vfork();
+        if (pid != 0) {
+            runningProcess.at(i) = pid;
+        }
+        else
+        {
+            targetServer.setChild();
+            break;
+        }
+    }
+    targetServer.listen();
+
 }
 
 void cleanUpAll(int singleNumber)

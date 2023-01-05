@@ -35,12 +35,6 @@ bool serverSocket::init(short port, database &datas) {
         log(error, "bind error!");
         return false;
     }
-    return true;
-}
-/* 本来想使用epoll进行阻塞处理的，可是macOS内核不支持epoll */
-
-/* 所以采用kqueue进行阻塞 */
-[[noreturn]] void serverSocket::startServer() {
     log(info, "Trying startup listening....");
     if (listen(listenSockId, MAX_SOCKET) < 0) {
         log(error, "listen startup error!");
@@ -49,14 +43,13 @@ bool serverSocket::init(short port, database &datas) {
     /* 启动线程池 */
     threadsPool pool{};
     /* 准备创建epoll队列 */
-    int listeningEpoll = epoll_create(1);
+    listeningEpoll = epoll_create(1);
     if (listeningEpoll == -1) {
         log(error, "Listen: epoll队列无法创建！");
         exit(errno);
     }
     /* 注册信号处理函数SIGPIPE(用于解决一些socket意外断开的问题) */
     signal(SIGPIPE, pipeHandle);
-    struct epoll_event listenEV{};
     listenEV.data.fd = listenSockId;
     listenEV.events = EPOLLIN;  // 类似于 kqueue的 EV_READ
     int ret = epoll_ctl(listeningEpoll, EPOLL_CTL_ADD, listenSockId, &listenEV);
@@ -64,20 +57,14 @@ bool serverSocket::init(short port, database &datas) {
         log(error, "epoll_ctl error");
         exit(errno);
     }
-    struct epoll_event listenEpollEvent[128];
-    int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     /* 创建epoll结构体并注册事件，准备用来阻塞 */
-    runningProcess.resize(PROCESS_SIZE);
-    for (int i = 0; i < PROCESS_SIZE; ++i) {
-        pid_t pid = vfork();
-        if (pid != 0) {
-            runningProcess.at(i) = pid;
-        } else {
-            child = true;
-            break;
-        }
-    }
+    return true;
+
+}
+
+[[noreturn]] void serverSocket::listen() {
     /* 准备创建进程 */
+    int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
         log(info, "开始阻塞");
         int num = epoll_wait(listeningEpoll, listenEpollEvent, size, -1);
