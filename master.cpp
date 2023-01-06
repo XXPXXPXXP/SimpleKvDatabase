@@ -8,8 +8,9 @@
 #include "listener.h"
 #include <wait.h>
 master * p_master;
+class master Master;
 int main() {
-    class master Master;
+    log(info,"starting...");
     p_master = &Master;
     Master.start();
     //理论上不会再往下执行
@@ -42,20 +43,25 @@ void master::exit()
 
 [[noreturn]] void master::start() {
     signal(SIGTERM, handler); //注册信号处理函数
+    signal(SIGSEGV, sigsegvHandler);
     datas.init();
+    log(info,"database初始化完成");
     auto args = new struct args;
     args->sockID = targetServer.init(SERVER_PORT, datas);
     args->server = &targetServer;
     args->datas = &datas;
-    pid.resize(PROCESS_SIZE);
-    for (int i = 0; i < PROCESS_SIZE; ++i) {
-        pid.at(i) = clone(listen,args+sizeof(struct args),CLONE_VM|CLONE_SETTLS, args);
-    }
-    while (true);
+//    pid.resize(PROCESS_SIZE);
+//    for (int i = 0; i < PROCESS_SIZE; ++i) {
+//        pid.at(i) = clone(listen,args+sizeof(struct args),CLONE_VM|CLONE_SETTLS, args);
+//        log(info,"clone status",(int)pid.at(i));
+//    }
+
+    targetServer.listen();
 
 }
 
 int master::listen(void * args) {
+    log(info,"clone success");
     int sockID = reinterpret_cast<struct args *>(args)->sockID;
     auto Server = reinterpret_cast<struct args *>(args)->server;
     auto datas = reinterpret_cast<struct args *>(args)->datas;
@@ -63,4 +69,9 @@ int master::listen(void * args) {
     Server->listen();
 }
 
+void sigsegvHandler(int num)
+{
+    log(info,"接收到信号",num);
+    exit(0);
+}
 

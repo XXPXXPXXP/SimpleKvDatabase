@@ -80,7 +80,7 @@ int listener::init(short port, database &datas) {
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接卡服 */
         setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
-        pool.start(targetSockId, data);
+        pool.startSingle(targetSockId, data);
         /* 采用多进程来进行accept,线程进行处理  */
     }
 }

@@ -10,7 +10,7 @@
 class database{
 private:
     std::map<std::string,std::string> datas;
-    pthread_mutex_t Locker;
+    pthread_mutex_t Locker{};
 public:
     bool init();
     bool putValue(const std::string& targetKey, const std::string& targetValue);

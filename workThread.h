@@ -6,7 +6,6 @@
 #define FINAL_PROJECT_WORKTHREAD_H
 #include <vector>
 #include "settings.h"
-#include "listener.h"
 #include "database.h"
 #include <atomic>
 class threadsPool {
@@ -18,7 +17,7 @@ class threadsPool {
 public:
 
     static void *worker(int targetSockId, database *, std::atomic<int> *threadsCount);
-    void start(int targetSockId, database *);
+    void startSingle(int targetSockId, database *database);
 
     ~threadsPool(){
         pthread_mutex_destroy(&taskLocker);

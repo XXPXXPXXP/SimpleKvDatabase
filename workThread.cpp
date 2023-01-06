@@ -5,7 +5,7 @@
 #include "workThread.h"
 #include <thread>
 
-void threadsPool::start(int targetSockId, database * database) {
+void threadsPool::startSingle(int targetSockId, database * database) {
     std::thread workers(worker,targetSockId,database,&threadsCount);
     log(info,"线程创建!");
     threadsCount++;

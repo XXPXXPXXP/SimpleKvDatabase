@@ -27,4 +27,5 @@ struct args{
 };
 void handler(int);
 void stopProcessor(int singleNum);
+void sigsegvHandler(int);
 #endif //FINAL_PROJECT_MASTER_H

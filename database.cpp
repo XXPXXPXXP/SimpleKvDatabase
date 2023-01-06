@@ -14,9 +14,7 @@ bool database::init() {
     return true;
 }
 
-bool database::putValue(const std::string& targetKey, const std::string& targetValue) {
-    pthread_mutex_lock(&Locker);
-    pthread_mutex_unlock(&Locker);
+bool database::putValue(const std::string& targetKey, const std::string& targetValue) noexcept(false){
     try {
         std::string value = datas.at(targetKey);
         if (value == targetValue) {
@@ -29,7 +27,7 @@ bool database::putValue(const std::string& targetKey, const std::string& targetV
             pthread_mutex_unlock(&Locker);
         }
     }
-    catch(std::out_of_range) {
+    catch(std::exception & e) {
         pthread_mutex_lock(&Locker);
         datas.emplace(targetKey,targetValue);
         pthread_mutex_unlock(&Locker);
