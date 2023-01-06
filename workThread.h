@@ -7,6 +7,7 @@
 #include <vector>
 #include "settings.h"
 #include "listener.h"
+#include "database.h"
 #include <atomic>
 class threadsPool {
     pthread_mutex_t taskLocker;
@@ -16,19 +17,15 @@ class threadsPool {
     /* 将会采用线程池来减少线程之间的重复销毁和创建 */
 public:
 
-    static void *worker(int targetSockId, listener *server, std::atomic<int> *threadsCount);
-    void start(int targetSockId, listener *server);
+    static void *worker(int targetSockId, database *, std::atomic<int> *threadsCount);
+    void start(int targetSockId, database *);
 
     ~threadsPool(){
         pthread_mutex_destroy(&taskLocker);
-        log(warning,"线程池正在被回收！");
+        log(warning,"线程池被回收！");
     }
 };
-struct args
-{
-    int sockID;
-    listener * server;
-};
+
 
 
 #endif //FINAL_PROJECT_WORKTHREAD_H

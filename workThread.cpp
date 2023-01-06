@@ -1,20 +1,17 @@
 //
 // Created by 神奇bug在哪里 on 2022/12/29.
 //
-#include "Socket.h"
+#include "Procotol.h"
 #include "workThread.h"
 #include <thread>
 
-void threadsPool::start(int targetSockId, listener *server) {
-    auto *args = new struct args;
-    args->server = server;
-    args->sockID = targetSockId;
-    std::thread workers(worker,targetSockId,server,&threadsCount);
+void threadsPool::start(int targetSockId, database * database) {
+    std::thread workers(worker,targetSockId,database,&threadsCount);
     log(info,"线程创建!");
     threadsCount++;
 }
 
-void *threadsPool::worker(int targetSockId, listener *server, std::atomic<int> *threadsCount) {
+void *threadsPool::worker(int targetSockId, database *datas, std::atomic<int> *threadsCount) {
     /* 接收参数 */
     uint32_t magic_number;
     while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
@@ -40,10 +37,10 @@ void *threadsPool::worker(int targetSockId, listener *server, std::atomic<int> *
             continue;
         }
         log(info, "header信息成功接收", targetSockId);
-        process(targetSockId, type);
+        process(targetSockId, type, nullptr);
         log(info, "数据已完成处理!");
     }
-    /* 开始读取head */
+
     close(targetSockId);
     log(info, "当前sock连接已断开!", targetSockId);
     log(info,"线程退出！");

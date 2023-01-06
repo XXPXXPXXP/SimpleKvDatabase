@@ -10,7 +10,6 @@
 #include <deque>
 #include "serverLog.h"
 #include "workThread.h"
-#include "database.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
@@ -19,20 +18,19 @@
 #include <cstring>
 /* 为了能够使用memset */
 #include <string>
+#include "database.h"
 
 class listener {
 private:
     int listenSockId = -1;
     struct sockaddr_in ipConfig;
-    database temp;
-    database &data = temp;
-    bool child = false;
     struct epoll_event listenEpollEvent[128];
     struct epoll_event listenEV{};
     int listeningEpoll;
     threadsPool pool;
+    database * data;
 public:
-    bool init(short port, database &datas);
+    int init(short port, database &datas);
     /* 默认端口采用1433，也就是SQL的默认端口 */
     [[noreturn]]   void listen();
 

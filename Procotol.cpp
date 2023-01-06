@@ -5,13 +5,12 @@
 #include "serverLog.h"
 #include <sys/socket.h>
 #include <csignal>
-#include "Socket.h"
+#include "Procotol.h"
 
-bool get(int targetSockId) {
+bool get(int targetSockId, database &datas) {
     uint32_t size;
     std::string key;
     bool sendResult;
-
     if (read(targetSockId, &size, 4) < 0) {
         log(error, "读取body: size失败！", targetSockId);
         return false;
@@ -28,7 +27,7 @@ bool get(int targetSockId) {
         key.clear();
         return false;
     }
-    std::string value = data.getValue(key);
+    std::string value = datas.getValue(key);
     if (value.empty()) {
         sendField(targetSockId, const_cast<char *>("null"), 5, MSG_NOSIGNAL);
         return false;
@@ -44,29 +43,29 @@ bool get(int targetSockId) {
     log(info, "返回的数据: value = " + value);
     return sendResult;
 }
-bool process(int target_sock_id, uint32_t type) {
+bool process(int target_sock_id, uint32_t type, database *database) {
     if (type == 0) {
         log(info, "收到put请求!", target_sock_id);
-        if (!add(target_sock_id)) {
+        if (!add(target_sock_id, *database)) {
             log(error, "添加键值对失败！");
             return false;
         }
     } else if (type == 1) {
         log(info, "收到delete请求!", target_sock_id);
-        if (!deleteData(target_sock_id)) {
+        if (!deleteData(target_sock_id, *database)) {
             log(error, "删除键值对失败！");
             return false;
         }
     } else if (type == 2) {
         log(info, "收到get请求！", target_sock_id);
-        if (!get(target_sock_id)) {
+        if (!get(target_sock_id, *database)) {
             log(error, "查找键值对失败！");
             return false;
         }
     }
     return true;
 }
-bool deleteData(int targetSockId) {
+bool deleteData(int targetSockId, database &datas) {
     uint32_t size;
     if (read(targetSockId, &size, 4) < 0) {
         log(error, "读取数据大小失败!");
@@ -80,7 +79,7 @@ bool deleteData(int targetSockId) {
     }
     /* 数据读取部分结束 */
     bool result;
-    result = data.deleteValue(targetKey);
+    result = datas.deleteValue(targetKey);
     if (!sendHeader(targetSockId, 1, 4)) {
         log(error, "发送head失败!");
         return false;
@@ -102,7 +101,7 @@ bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra)
         return true;
 }
 
-bool add(int target_sock_id) {
+bool add(int target_sock_id, database &datas) {
     /*
      * description: 用于添加键值对数据
      */
@@ -128,7 +127,7 @@ bool add(int target_sock_id) {
         return false;
     }
 
-    if (data.addValue(target_key, target_value)) {
+    if (datas.putValue(target_key, target_value)) {
         log(info, "键值对成功保存!", target_sock_id);
         sendHeader(target_sock_id, 1, 3);
         bool status = true;

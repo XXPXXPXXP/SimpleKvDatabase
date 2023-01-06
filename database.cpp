@@ -5,7 +5,6 @@
 #include "database.h"
 #include <fstream>
 
-
 bool database::init() {
     if(!readFromFile())
     {
@@ -15,7 +14,7 @@ bool database::init() {
     return true;
 }
 
-bool database::addValue(const std::string& targetKey, const std::string& targetValue) {
+bool database::putValue(const std::string& targetKey, const std::string& targetValue) {
     pthread_mutex_lock(&Locker);
     pthread_mutex_unlock(&Locker);
     try {
@@ -127,3 +126,4 @@ bool database::saveToFile() {
     file.close();
     return true;
 }
+

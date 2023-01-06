@@ -13,11 +13,12 @@ private:
     pthread_mutex_t Locker;
 public:
     bool init();
-    bool addValue(const std::string& targetKey, const std::string& targetValue);
+    bool putValue(const std::string& targetKey, const std::string& targetValue);
     std::string getValue(const std::string& targetKey);
     bool deleteValue(const std::string& t_key);
     bool saveToFile();
     bool readFromFile();
+    void dataProvider();
     ~database(){
         log(warning,"Force exit tiggered!\nSaving datas now....");
         saveToFile();

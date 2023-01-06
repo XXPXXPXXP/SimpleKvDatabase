@@ -6,24 +6,25 @@
 #include "listener.h"
 #include "settings.h"
 
-extern std::vector<pid_t> runningProcess;
-extern listener *p_target_server;
-
 void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
 }
 /* macOS/Linux 在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
-bool listener::init(short port, database &datas) {
-    data = datas;
-    //delete &temp;  //释放掉为了规避c++的限制而使用的临时对象
+int listener::init(short port, database &datas) {
+    data = &datas;
     listenSockId = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSockId == -1) {
         log(error, "socket init error!");
-        return false;
+        return -1;
     }
     /* 创建基本的socket */
     int opt_code = 1;
-    setsockopt(listenSockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code));
+    if (setsockopt(listenSockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code)))
+    {
+        log(error,"端口复用设置失败！");
+        close(listenSockId);
+        exit(-1);
+    }
     /* 设置端口复用 */
     memset(&ipConfig, 0, sizeof(ipConfig)); //对地址结构体填充0,optional on macOS
     ipConfig.sin_family = AF_INET;//IPv4
@@ -32,7 +33,7 @@ bool listener::init(short port, database &datas) {
     /* 创建地址结构体 */
     if (bind(listenSockId, (struct sockaddr *) &ipConfig, sizeof(ipConfig)) < 0) {
         log(error, "bind error!");
-        return false;
+        return -1;
     }
     log(info, "Trying startup listening....");
     if (::listen(listenSockId, MAX_SOCKET) < 0) {
@@ -55,7 +56,7 @@ bool listener::init(short port, database &datas) {
         exit(errno);
     }
     /* 创建epoll结构体并注册事件，准备用来阻塞 */
-    return true;
+    return listenSockId;
 
 }
 
@@ -79,16 +80,12 @@ bool listener::init(short port, database &datas) {
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接卡服 */
         setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
-        pool.start(targetSockId, this);
+        pool.start(targetSockId, data);
         /* 采用多进程来进行accept,线程进行处理  */
     }
 }
 
-
 void listener::stop() const {
     close(listenSockId);
-    if (!child) {
-        data.saveToFile();
-    }
 }
 
