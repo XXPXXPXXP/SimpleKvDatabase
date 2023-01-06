@@ -8,23 +8,24 @@
 #include "settings.h"
 #include "database.h"
 #include <atomic>
+#include <thread>
+#include <mutex>
 class threadsPool {
-    pthread_mutex_t taskLocker;
+protected:
     const uint32_t maxThread = MAX_WORK_THREAD;
     const uint32_t minThread = MIN_WORK_THREAD;
     std::atomic<int> threadsCount = 0;
+    std::atomic<int> pressureCount = 0;
+    std::vector<std::thread> workerIDs;
+    std::thread managerID;
+    std::mutex pipeLocker;
     /* 将会采用线程池来减少线程之间的重复销毁和创建 */
 public:
-
-    static void *worker(int targetSockId, database *, std::atomic<int> *threadsCount);
-    void startSingle(int targetSockId, database *database);
-
+    virtual void start() = 0;
     ~threadsPool(){
-        pthread_mutex_destroy(&taskLocker);
         log(warning,"线程池被回收！");
     }
 };
-
 
 
 #endif //FINAL_PROJECT_WORKTHREAD_H

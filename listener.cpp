@@ -10,8 +10,7 @@ void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
 }
 /* macOS/Linux 在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
-int listener::init(short port, database &datas) {
-    data = &datas;
+int listener::init(short port) {
     listenSockId = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSockId == -1) {
         log(error, "socket init error!");
@@ -37,7 +36,7 @@ int listener::init(short port, database &datas) {
     }
     log(info, "Trying startup listening....");
     if (::listen(listenSockId, MAX_SOCKET) < 0) {
-        log(error, "listen startup error!");
+        log(error, "reader startup error!");
         exit(errno);
     }
     /* 准备创建epoll队列 */
@@ -60,27 +59,29 @@ int listener::init(short port, database &datas) {
 
 }
 
-[[noreturn]] void listener::listen() {
+[[noreturn]] void listener::listen(listener *_this, int listenFd[2]) {
+    close(listenFd[0]);//关闭读端，仅用来写入sockID
     int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
         log(info, "开始阻塞");
-        int num = epoll_wait(listeningEpoll, listenEpollEvent, size, -1);
+        int num = epoll_wait(_this->listeningEpoll, _this->listenEpollEvent, size, -1);
         if (num < 1) {
             log(error, "epoll队列异常！");
             continue;
         }
-        int targetSockId = accept(listenSockId, nullptr, nullptr);    // 传入的socket
+        int targetSockId = accept(_this->listenSockId, nullptr, nullptr);    // 传入的socket
         if (targetSockId == -1) {
             log(error, "accept error!");
             continue;
         }
         log(info, "accept成功！", targetSockId);
         struct timeval timeOut{};
-        timeOut.tv_sec = 3;
+        timeOut.tv_sec = 10;
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接卡服 */
         setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
-        pool.startSingle(targetSockId, data);
+        write(listenFd[1],&targetSockId,sizeof(int));
+
         /* 采用多进程来进行accept,线程进行处理  */
     }
 }
@@ -88,4 +89,9 @@ int listener::init(short port, database &datas) {
 void listener::stop() const {
     close(listenSockId);
 }
-
+void listener::start(int listenFd[2]) {
+    for (int i = 0; i < ACCEPT_THREAD-1; ++i) {
+        threads.emplace_back(listen, this,listenFd);
+    }
+    listen(this, listenFd);
+}

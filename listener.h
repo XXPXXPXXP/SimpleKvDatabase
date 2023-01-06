@@ -19,7 +19,6 @@
 /* 为了能够使用memset */
 #include <string>
 #include "database.h"
-
 class listener {
 private:
     int listenSockId = -1;
@@ -27,13 +26,12 @@ private:
     struct epoll_event listenEpollEvent[128];
     struct epoll_event listenEV{};
     int listeningEpoll;
-    threadsPool pool;
-    database * data;
+    std::vector<std::thread> threads;
 public:
-    int init(short port, database &datas);
+    int init(short port);
     /* 默认端口采用1433，也就是SQL的默认端口 */
-    [[noreturn]]   void listen();
-
+    [[noreturn]] static void listen(listener *_this, int listenFd[2]);
+    void start(int listenFd[2]);
     ~listener() {
         log(warning, "server触发了回收!");
         stop();

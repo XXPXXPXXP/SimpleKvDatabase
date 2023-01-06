@@ -9,6 +9,7 @@
 #include <wait.h>
 master * p_master;
 class master Master;
+database datas;
 int main() {
     log(info,"starting...");
     p_master = &Master;
@@ -44,29 +45,15 @@ void master::exit()
 [[noreturn]] void master::start() {
     signal(SIGTERM, handler); //注册信号处理函数
     signal(SIGSEGV, sigsegvHandler);
-    datas.init();
-    log(info,"database初始化完成");
-    auto args = new struct args;
-    args->sockID = targetServer.init(SERVER_PORT, datas);
-    args->server = &targetServer;
-    args->datas = &datas;
-//    pid.resize(PROCESS_SIZE);
-//    for (int i = 0; i < PROCESS_SIZE; ++i) {
-//        pid.at(i) = clone(listen,args+sizeof(struct args),CLONE_VM|CLONE_SETTLS, args);
-//        log(info,"clone status",(int)pid.at(i));
-//    }
-
-    targetServer.listen();
 
 }
 
-int master::listen(void * args) {
-    log(info,"clone success");
-    int sockID = reinterpret_cast<struct args *>(args)->sockID;
-    auto Server = reinterpret_cast<struct args *>(args)->server;
-    auto datas = reinterpret_cast<struct args *>(args)->datas;
+int master::reader(void * args) {
+    log(info,"reader processor start success");
     signal(SIGTERM, stopProcessor);//注册子进程退出时的函数
-    Server->listen();
+    listener listen;
+    listen.init(SERVER_PORT);
+    listen.listen(nullptr, nullptr);
 }
 
 void sigsegvHandler(int num)

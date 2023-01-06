@@ -12,13 +12,12 @@
 class master {
 private:
     std::vector<pid_t> pid;
-    database datas;
-    listener targetServer;
 public:
     void exit();
-
     [[noreturn]] void start();
-    static int listen(void *server);
+    static int reader(void *);
+    static int dataProvider(void *);
+    static int sender(void *);
 };
 struct args{
     int sockID;

@@ -10,7 +10,6 @@
 bool get(int targetSockId, database &datas) {
     uint32_t size;
     std::string key;
-    bool sendResult;
     if (read(targetSockId, &size, 4) < 0) {
         log(error, "读取body: size失败！", targetSockId);
         return false;
@@ -38,6 +37,7 @@ bool get(int targetSockId, database &datas) {
     }
     log(info, "head数据发送成功！", targetSockId);
     uint32_t valueSize = value.size();
+    bool sendResult;
     sendResult = sendField(targetSockId, &valueSize, 4, MSG_NOSIGNAL);
     sendResult = sendResult && sendField(targetSockId, const_cast<char *>(value.data()), valueSize, MSG_NOSIGNAL);
     log(info, "返回的数据: value = " + value);
@@ -66,17 +66,6 @@ bool process(int target_sock_id, uint32_t type, database *database) {
     return true;
 }
 bool deleteData(int targetSockId, database &datas) {
-    uint32_t size;
-    if (read(targetSockId, &size, 4) < 0) {
-        log(error, "读取数据大小失败!");
-        return false;
-    }
-    std::string targetKey;
-    targetKey.resize(size);
-    if (read(targetSockId, const_cast<char *>(targetKey.data()), size) != size) {
-        log(error, "读取key内容失败!");
-        return false;
-    }
     /* 数据读取部分结束 */
     bool result;
     result = datas.deleteValue(targetKey);
@@ -105,27 +94,6 @@ bool add(int target_sock_id, database &datas) {
     /*
      * description: 用于添加键值对数据
      */
-    uint32_t key_size, value_size;
-    std::string target_key, target_value;
-    if (read(target_sock_id, &key_size, 4) < 0) {
-        log(error, "body:key_size读取失败！", target_sock_id);
-        return false;
-    }
-    target_key.resize(key_size);
-    if (read(target_sock_id, const_cast<char *>(target_key.data()), key_size) < 0) {
-        log(error, "body:key读取失败！", target_sock_id);
-        //这里函数会退出，所以这里资源会被自动回收。固不再手动回收资源
-        return false;
-    }
-    if (read(target_sock_id, &value_size, 4) < 0) {
-        log(error, "body:value_size读取失败!", target_sock_id);
-        return false;
-    }
-    target_value.resize(value_size);
-    if (read(target_sock_id, const_cast<char *>(target_value.data()), value_size) < 0) {
-        log(error, "body:value读取失败!", target_sock_id);
-        return false;
-    }
 
     if (datas.putValue(target_key, target_value)) {
         log(info, "键值对成功保存!", target_sock_id);
