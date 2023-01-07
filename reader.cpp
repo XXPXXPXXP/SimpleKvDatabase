@@ -126,9 +126,11 @@
                     write(readerFd[1],const_cast<char *>(key.data()), keySize);
                     write(readerFd[1],&targetSockId, sizeof(int));
                     _this->pipeLocker.unlock();
+                    break;
                 }
                 default:
                     log(error,"接收到错误的类型！");
+                    break;
             }
             log(info, "reader: 数据已完成传递!");
         }

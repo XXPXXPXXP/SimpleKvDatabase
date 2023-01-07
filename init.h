@@ -21,5 +21,4 @@ public:
 init * p_master;
 class init Master;
 void sigHandler(int);
-void sigsegvHandler(int);
 #endif//FINAL_PROJECT_INIT_H

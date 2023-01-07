@@ -67,7 +67,7 @@ void init::exit()
     close(readerFd[0]);close(readerFd[1]);close(senderFd[0]);close(senderFd[1]);
     log(info,"父进程已关闭全部管道!");
     signal(SIGTERM, sigHandler); //注册信号处理函数
-    signal(SIGSEGV, sigsegvHandler);
+    signal(SIGSEGV, sigHandler);
     signal(SIGINT, sigHandler);
     signal(SIGSTOP, sigHandler);
     log(info,"主进程信号处理函数注册完成");
@@ -80,10 +80,4 @@ void init::exit()
     ::exit(-1);
 }
 
-void sigsegvHandler(int num)
-{
-    log(info,"接收到信号",num);
-    p_master->exit();
-    exit(0);
-}
 

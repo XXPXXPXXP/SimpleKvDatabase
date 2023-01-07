@@ -11,11 +11,11 @@ database * globalSignalPointer;
 void database::start(int readerFd[2], int senderFd[2]) {
     close(readerFd[1]);//reader仅读取
     close(senderFd[0]);//sender仅写入
+    signal(SIGTERM,sigHelder);
     if (!readFromFile()) {
         log(warning, "读取数据文件失败！");
     }
     globalSignalPointer = this;
-    signal(SIGTERM,sigHelder);
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, this, readerFd, senderFd);//创建工作线程
     }
@@ -145,8 +145,10 @@ bool database::saveToFile() {
                 uint32_t keySize, valueSize;
                 std::string targetKey, targetValue;
                 readResult = read(readerFd[0], &keySize, 4) == 4;
+                targetKey.resize(keySize);
                 readResult = readResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
                 readResult = readResult && read(readerFd[0], &valueSize, 4) == 4;
+                targetValue.resize(valueSize);
                 readResult = readResult && read(readerFd[0], const_cast<char *>(targetValue.data()), valueSize) == valueSize;
                 readResult = readResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
                 _this->pipeReadLocker.unlock();
@@ -154,6 +156,7 @@ bool database::saveToFile() {
                 if (!readResult) {
                     log(error, "database：管道读取异常！");
                 }
+                log(info,"database:处理put请求:key="+targetKey+" value="+targetValue);
                 readResult = _this->putValue(targetKey, targetValue);//这里重用了这个readResult
                 _this->pipeWriteLocker.lock();
                 bool pipeWrite = write(senderFd[1], &type, 4);
@@ -171,6 +174,7 @@ bool database::saveToFile() {
                 uint32_t keySize;
                 std::string targetKey;
                 bool pipeResult = read(readerFd[0], &keySize, 4) == 4;
+                targetKey.resize(keySize);
                 pipeResult = pipeResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
                 pipeResult = pipeResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
                 if (!pipeResult) {
@@ -194,6 +198,7 @@ bool database::saveToFile() {
                 uint32_t keySize;
                 std::string targetKey;
                 bool pipeResult = read(readerFd[0],&keySize,4) == 4;
+                targetKey.resize(keySize);
                 pipeResult = pipeResult && read(readerFd[0],const_cast<char *>(targetKey.data()),keySize) == keySize;
                 pipeResult = pipeResult && read(readerFd[0],&sockID, sizeof(int)) == sizeof(int);
                 _this->pipeReadLocker.unlock();
@@ -202,6 +207,7 @@ bool database::saveToFile() {
                     log(error,"database: reader管道出现异常！");
                     continue ;
                 }
+                log(info,"database:处理Get请求:key="+targetKey);
                 std::string  value = _this->getValue(targetKey);
                 if (value.empty())
                 {
@@ -220,18 +226,21 @@ bool database::saveToFile() {
                         log(error,"database: sender管道出现异常！");
                         continue ;
                     }
+                    log(info,"database:Get请求完成处理，已经放回管道");
                     continue ;
                 }
                 else
                 {
                     uint32_t valueSize = value.size();
                     type += 3;//构造发送的type值
+                    log(info,"database:查找键值对成功！value="+value);
                     _this->pipeWriteLocker.lock();
                     pipeResult = write(senderFd[1],&type,4)==4;
                     pipeResult = pipeResult && write(senderFd[1],&valueSize,4) == 4;
                     pipeResult = pipeResult && write(senderFd[1],const_cast<char *>(value.data()),valueSize) == valueSize;
                     pipeResult = pipeResult && write(senderFd[1],&sockID, sizeof(int))== sizeof(int );
                     _this->pipeWriteLocker.unlock();
+                    log(info,"database:数据写入管道成功");
                     if (!pipeResult)
                     {
                         log(error,"database: sender管道出现异常！");
