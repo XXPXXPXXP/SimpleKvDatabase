@@ -5,6 +5,7 @@
 
 #include "networkIO.h"
 #include "settings.h"
+#include "sender.h"
 
 void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
@@ -55,11 +56,13 @@ int networkIO::init(short port) {
         exit(errno);
     }
     /* 创建epoll结构体并注册事件，准备用来阻塞 */
+
+    /* 初始化reader线程池 */
     return listenSockId;
 
 }
 
-[[noreturn]] void networkIO::accepts(networkIO *_this, int listenFd[2]) {
+[[noreturn]] void networkIO::accepts(networkIO *_this) {
     log(info,"accepts: 工作线程创建！");
     int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
@@ -81,18 +84,24 @@ int networkIO::init(short port) {
         /* 设置连接超时,防止连接一直不释放 */
         setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
         /* 下面开始处理交由reader处理 */
+        _this->readerPool.addTask(targetSockId);
     }
 }
 
 void networkIO::stop() const {
     close(listenSockId);
 }
-void networkIO::start(int listenFd[2]) {
-    close(listenFd[0]);//关闭读端，仅用来写入sockID
+void networkIO::start(int readerFd[2], int senderFd[2]) {
+    close(readerFd[0]);//关闭读端，仅用来写入数据IO任务
+    close(senderFd[1]);//关闭写端，仅用来读取数据IO结果
     log(info,"listener:开始初始化");
     init(SERVER_PORT);
-    for (int i = 0; i < ACCEPT_THREAD-1; ++i) {
-        threads.emplace_back(accepts, this, listenFd);
+    for (int i = 0; i < ACCEPT_THREAD; ++i) {
+        acceptThreads.emplace_back(accepts, this);
     }
-    accepts(this, listenFd);
+    /* 启动监听线程 */
+    readerPool.start(readerFd);
+    senderPool.start(senderFd);
+    /* 启动网络IO线程池 */
+    acceptThreads.at(0).join();
 }

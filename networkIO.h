@@ -18,7 +18,8 @@
 #include <cstring>
 /* 为了能够使用memset */
 #include <string>
-#include "database.h"
+#include "reader.h"
+#include "sender.h"
 class networkIO {
 private:
     int listenSockId = -1;
@@ -26,12 +27,16 @@ private:
     struct epoll_event listenEpollEvent[128];
     struct epoll_event listenEV{};
     int listeningEpoll;
-    std::vector<std::thread> threads;
+    std::vector<std::thread> acceptThreads;
+    std::vector<std::thread> readerThreads;
+    reader readerPool;
+    sender senderPool;
+
 public:
     int init(short port);
     /* 默认端口采用1433，也就是SQL的默认端口 */
-    [[noreturn]] static void accepts(networkIO *_this, int listenFd[2]);
-    void start(int listenFd[2]);
+    [[noreturn]] static void accepts(networkIO *_this);
+    void start(int readerFd[2], int senderFd[2]);
     ~networkIO() {
         log(warning, "server触发了回收!");
         stop();

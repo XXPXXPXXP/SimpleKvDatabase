@@ -8,26 +8,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-result"
 void sender::start(int senderFd[2]) {
-    //managerID = std::thread(manager, this);
-    /* 下面开始创建epoll队列 */
-//    pipeEpoll = epoll_create(1);
-//    if (pipeEpoll == -1)
-//    {
-//        log(error,"sender:epoll队列异常！");
-//        exit(errno);
-//    }
-//    pipeEV.data.fd = senderFd[0];
-//    pipeEV.events = EPOLLIN;
-//    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, senderFd[0], &pipeEV);
-//    if (ret == -1) {
-//        log(error, "sender: epoll_ctl error");
-//        exit(errno);
-//    }
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, senderFd, this);
     }
-    log(info,"sender:工作线程创建!");
-    //managerID.join();
     workerIDs.at(0).join();
     log(error, "reader:管理线程异常退出！");
     exit(-1);
@@ -38,7 +21,7 @@ void sender::manager(void *_this) {
 }
 
 void *sender::worker(int *senderFd, sender *_this) {
-    close(senderFd[1]);//关闭写端
+    log(info,"sender:工作线程创建!");
     int sockID;
     uint32_t type;
     while (true) {

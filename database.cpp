@@ -16,27 +16,11 @@ void database::start(int readerFd[2], int senderFd[2]) {
     }
     globalSignalPointer = this;
     signal(SIGTERM,sigHelder);
-//    pipeEpoll = epoll_create(1);
-//    if (pipeEpoll == -1)
-//    {
-//        log(error,"database:epoll队列异常！");
-//        exit(errno);
-//    }
-//    pipeEV.data.fd = readerFd[0];
-//    pipeEV.events = EPOLLIN;
-//    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, readerFd[0], &pipeEV);
-//    if (ret == -1) {
-//        log(error, "database: epoll_ctl error");
-//        exit(errno);
-//    }
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, this, readerFd, senderFd);//创建工作线程
     }
     log(info,"database:工作线程创建！");
     workerIDs.at(0).join();
-//    managerID = std::thread(manager, this);//创建管理线程
-//    managerID.join();
-//    log(error, "database: 管理线程退出，数据进程即将崩溃！");
     exit(-1);
 }
 
@@ -147,12 +131,6 @@ bool database::saveToFile() {
 [[noreturn]] void database::worker(database *_this, int readerFd[2], int senderFd[2]) {
 
     while (true) {
-//        int num = epoll_wait(_this->pipeEpoll, _this->pipeEvent, sizeof(pipeEvent) / sizeof(struct epoll_event), -1);
-//        if (num < 1) {
-//            log(error, "database:epoll队列异常！");
-//            sleep(1);
-//            continue;
-//        }
         uint32_t type;
         _this->pipeReadLocker.lock();
         if (read(readerFd[0], &type, sizeof(int)) != sizeof(int)) {

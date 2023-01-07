@@ -40,10 +40,9 @@ void init::exit()
     signal(SIGSEGV, sigsegvHandler);
     signal(SIGINT, sigHandler);
     signal(SIGSTOP, sigHandler);
-    int listenFd[2],readerFd[2],senderFd[2];
+    int readerFd[2],senderFd[2];
     /* 下面开始创建管道 */
-    if (pipe(listenFd)==-1|| pipe(readerFd)==-1
-        || pipe(senderFd)==-1)
+    if (pipe(readerFd)==-1 || pipe(senderFd)==-1)
     {
         log(error,"init: 管道出现错误！");
         ::exit(errno);
@@ -53,8 +52,6 @@ void init::exit()
     processorID = fork();
     if (processorID == 0)
     {
-        close(listenFd[0]);
-        close(listenFd[1]);
         database database;
         database.start(readerFd,senderFd);//正常情况下该函数将不会返回
         log(error,"databaseMain:数据进程异常退出！");
@@ -64,20 +61,16 @@ void init::exit()
     processorID = fork();
     if (processorID == 0)
     {
-        close(readerFd[0]);
-        close(readerFd[1]);
-        close(senderFd[0]);
-        close(senderFd[1]);
-        networkIO listener;
-        listener.start(listenFd); //正常情况下该函数不会返回
-        log(error,"listenerMain:监听进程异常退出！");
+        networkIO networkIO;
+        networkIO.start(readerFd, senderFd); //正常情况下该函数不会返回
+        log(error,"networkIO:网络IO进程异常退出！");
         ::exit(errno);
     }
     pid.emplace_back(processorID);
     /* 下面父进程关闭管道 */
-    close(listenFd[0]);close(listenFd[1]);close(readerFd[0]);close(readerFd[1]);close(senderFd[0]);close(senderFd[1]);
+   close(readerFd[0]);close(readerFd[1]);close(senderFd[0]);close(senderFd[1]);
     log(info,"父进程已关闭全部管道!");
-    management();//父进程负责监听各大子进程的异常退出情况
+    management();//父进程负责监听各子进程的异常退出情况
 }
 
 [[noreturn]] void init::management() {

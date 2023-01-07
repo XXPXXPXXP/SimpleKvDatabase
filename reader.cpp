@@ -6,17 +6,19 @@
 #include <unistd.h>
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-result"
-[[noreturn]] void *reader::worker(int readerFd[2], int listenFd[2], reader *_this) {
+[[noreturn]] void *reader::worker(int readerFd[2], reader *_this) {
     log(info,"Reader:工作线程创建成功！");
     while (true) {
-        int targetSockId = -1;
-        if (read(listenFd[0],&targetSockId,sizeof (int))!= sizeof(int))
+        if (_this->targetSockIds.empty())
         {
-            log(error,"reader: 发生了管道读取错误!");
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));//50ms轮询是否有新任务
             continue;
         }
-        log(info,"reader:pipe收到sockID",targetSockId);
-        /* listen管道没有顺序要求。因此不用加锁 */
+        _this->taskLocker.lock();
+        int targetSockId = _this->targetSockIds.front();
+        _this->targetSockIds.pop();
+        _this->taskLocker.unlock();
+        /* 从任务列表中取出任务 */
         uint32_t magic_number;
         while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
         {
@@ -135,19 +137,14 @@
 #pragma clang diagnostic pop
 [[noreturn]] void reader::manager(void *_this) {
     while (true);
-
 }
-void reader::start(int readerFd[2],int listenFd[2]) {
+void reader::start(int readerFd[2]) {
     //managerID = std::thread(manager, this);
-    close(readerFd[0]);
-    /* 关闭reader管道的读端，该管道用于向数据库发送请求 */
-    close(listenFd[1]);
-    /* 关闭listen管道的写端，该管道用于读取targetSockId */
     for (int i = 0; i < minThread; ++i) {
-        workerIDs.emplace_back(worker, readerFd, listenFd, this);
+        workerIDs.emplace_back(worker, readerFd, this);
     }
-    //managerID.join();
-    workerIDs.at(0).join();
-    log(error,"reader:管理线程异常退出！");
-    exit(-1);
+}
+
+void reader::addTask(int targetSockID) {
+    targetSockIds.push(targetSockID);
 }
