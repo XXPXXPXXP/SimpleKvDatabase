@@ -2,13 +2,27 @@
 // Created by 神奇bug在哪里 on 2023/1/6.
 //
 #include "sender.h"
-#include <bits/socket.h>
 #include <sys/socket.h>
+#include <csignal>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-result"
 void sender::start(int senderFd[2]) {
     //managerID = std::thread(manager, this);
+    /* 下面开始创建epoll队列 */
+//    pipeEpoll = epoll_create(1);
+//    if (pipeEpoll == -1)
+//    {
+//        log(error,"sender:epoll队列异常！");
+//        exit(errno);
+//    }
+//    pipeEV.data.fd = senderFd[0];
+//    pipeEV.events = EPOLLIN;
+//    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, senderFd[0], &pipeEV);
+//    if (ret == -1) {
+//        log(error, "sender: epoll_ctl error");
+//        exit(errno);
+//    }
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, senderFd, this);
     }
@@ -20,6 +34,7 @@ void sender::start(int senderFd[2]) {
 }
 
 void sender::manager(void *_this) {
+    while (true);
 }
 
 void *sender::worker(int *senderFd, sender *_this) {
@@ -27,6 +42,12 @@ void *sender::worker(int *senderFd, sender *_this) {
     int sockID;
     uint32_t type;
     while (true) {
+//        int num = epoll_wait(_this->pipeEpoll, _this->pipeEvent, sizeof(pipeEvent) / sizeof(struct epoll_event), -1);
+//        if (num < 1) {
+//            log(error, "sender:epoll队列异常！");
+//            sleep(1);
+//            continue;
+//        }
         _this->pipeLocker.lock();
         read(senderFd[0], &type, 4);
         switch (type) {
@@ -58,7 +79,7 @@ void *sender::worker(int *senderFd, sender *_this) {
                 break;
             }
             default:
-                log(error, "sender:错误的type!");
+                log(error, "sender:错误的type!",(int)type);
                 _this->pipeLocker.unlock();
                 break;
         }

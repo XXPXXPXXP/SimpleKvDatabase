@@ -10,7 +10,7 @@ class sender : public threadsPool{
 private:
 public:
     [[noreturn]] static void manager(void * _this);
-    void start(int senderFd[2]) override;
+    void start(int senderFd[2]);
     [[noreturn]] static void *worker(int *senderFd, sender *_this);
 };
 bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra);

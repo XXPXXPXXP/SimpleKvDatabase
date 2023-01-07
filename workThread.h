@@ -6,19 +6,20 @@
 #define FINAL_PROJECT_WORKTHREAD_H
 #include <vector>
 #include "settings.h"
-#include <atomic>
 #include <thread>
 #include <mutex>
 #include "serverLog.h"
+#include "sys/epoll.h"
 class threadsPool {
 protected:
     const uint32_t maxThread = MAX_WORK_THREAD;
     const uint32_t minThread = MIN_WORK_THREAD;
-    std::atomic<int> threadsCount = 0;
-    std::atomic<int> pressureCount = 0;
     std::vector<std::thread> workerIDs;
     std::thread managerID;
     std::mutex pipeLocker;
+    struct epoll_event pipeEvent[10];
+    struct epoll_event pipeEV{};
+    int pipeEpoll;
     /* 将会采用线程池来减少线程之间的重复销毁和创建 */
 public:
     ~threadsPool(){

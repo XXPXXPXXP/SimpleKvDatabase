@@ -60,10 +60,10 @@ int listener::init(short port) {
 }
 
 [[noreturn]] void listener::listen(listener *_this, int listenFd[2]) {
-    close(listenFd[0]);//关闭读端，仅用来写入sockID
+    log(info,"listen: 工作线程创建！");
     int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
-        log(info, "开始阻塞");
+        log(info, "listener:开始阻塞");
         int num = epoll_wait(_this->listeningEpoll, _this->listenEpollEvent, size, -1);
         if (num < 1) {
             log(error, "epoll队列异常！");
@@ -84,7 +84,6 @@ int listener::init(short port) {
         {
             log(error,"listener: 无法向管道中写入数据！",listenFd[1]);
         }
-
         /* 采用多进程来进行accept,线程进行处理  */
     }
 }
@@ -93,6 +92,8 @@ void listener::stop() const {
     close(listenSockId);
 }
 void listener::start(int listenFd[2]) {
+    close(listenFd[0]);//关闭读端，仅用来写入sockID
+    log(info,"listener:开始初始化");
     init(SERVER_PORT);
     for (int i = 0; i < ACCEPT_THREAD-1; ++i) {
         threads.emplace_back(listen, this,listenFd);

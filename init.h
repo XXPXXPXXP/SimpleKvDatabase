@@ -15,15 +15,17 @@ private:
 public:
     void exit();
     [[noreturn]] void start();
-    static int reader(void *);
-    static int dataProvider(void *);
-    static int sender(void *);
+
+    [[noreturn]] void management();
 };
 struct args{
     int sockID;
     listener * server;
     database * datas;
 };
+init * p_master;
+class init Master;
+database datas;
 void handler(int);
 void stopProcessor(int singleNum);
 void sigsegvHandler(int);

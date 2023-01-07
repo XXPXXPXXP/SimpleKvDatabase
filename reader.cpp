@@ -7,17 +7,22 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-result"
 [[noreturn]] void *reader::worker(int readerFd[2], int listenFd[2], reader *_this) {
+    log(info,"Reader:工作线程创建成功！");
     while (true) {
-        close(readerFd[0]);
-        /* 关闭reader管道的读端，该管道用于向数据库发送请求 */
-        close(listenFd[1]);
-        /* 关闭listen管道的写端，该管道用于读取targetSockId */
+        int num = epoll_wait(_this->pipeEpoll, _this->pipeEvent, sizeof(pipeEvent) / sizeof(struct epoll_event), -1);
+        if (num < 1) {
+            log(error, "reader:epoll队列异常！");
+            sleep(1);
+            continue;
+        }
+        log(info,"reader:epoll事件触发！");
         int targetSockId = -1;
-        if (read(listenFd[0],&targetSockId,sizeof (int))!=4)
+        if (read(listenFd[0],&targetSockId,sizeof (int))!= sizeof(int))
         {
             log(error,"reader: 发生了管道读取错误!");
             continue;
         }
+        log(info,"reader:pipe收到sockID",targetSockId);
         /* listen管道没有顺序要求。因此不用加锁 */
         uint32_t magic_number;
         while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
@@ -141,10 +146,27 @@
 }
 void reader::start(int readerFd[2],int listenFd[2]) {
     //managerID = std::thread(manager, this);
+    pipeEpoll = epoll_create(1);
+    if (pipeEpoll == -1)
+    {
+        log(error,"reader:epoll队列异常！");
+        exit(errno);
+    }
+    pipeEV.data.fd = listenFd[0];
+    pipeEV.events = EPOLLIN;
+    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, listenFd[0], &pipeEV);
+    if (ret == -1) {
+        log(error, "reader: epoll_ctl error");
+        exit(errno);
+    }
+    /*epoll队列完成初始化*/
+    close(readerFd[0]);
+    /* 关闭reader管道的读端，该管道用于向数据库发送请求 */
+    close(listenFd[1]);
+    /* 关闭listen管道的写端，该管道用于读取targetSockId */
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, readerFd, listenFd, this);
     }
-    log(info,"reader:工作线程创建！");
     //managerID.join();
     workerIDs.at(0).join();
     log(error,"reader:管理线程异常退出！");

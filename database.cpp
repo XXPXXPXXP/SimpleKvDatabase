@@ -5,13 +5,30 @@
 #include "database.h"
 #include <fstream>
 #include <csignal>
+#include <unistd.h>
+
 database * globalSignalPointer;
 void database::start(int readerFd[2], int senderFd[2]) {
+    close(readerFd[1]);//reader仅读取
+    close(senderFd[0]);//sender仅写入
     if (!readFromFile()) {
         log(warning, "读取数据文件失败！");
     }
     globalSignalPointer = this;
     signal(SIGTERM,sigHelder);
+//    pipeEpoll = epoll_create(1);
+//    if (pipeEpoll == -1)
+//    {
+//        log(error,"database:epoll队列异常！");
+//        exit(errno);
+//    }
+//    pipeEV.data.fd = readerFd[0];
+//    pipeEV.events = EPOLLIN;
+//    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, readerFd[0], &pipeEV);
+//    if (ret == -1) {
+//        log(error, "database: epoll_ctl error");
+//        exit(errno);
+//    }
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, this, readerFd, senderFd);//创建工作线程
     }
@@ -128,9 +145,14 @@ bool database::saveToFile() {
     while (true);
 }
 [[noreturn]] void database::worker(database *_this, int readerFd[2], int senderFd[2]) {
-    close(readerFd[1]);//reader仅读取
-    close(senderFd[0]);//sender仅写入
+
     while (true) {
+//        int num = epoll_wait(_this->pipeEpoll, _this->pipeEvent, sizeof(pipeEvent) / sizeof(struct epoll_event), -1);
+//        if (num < 1) {
+//            log(error, "database:epoll队列异常！");
+//            sleep(1);
+//            continue;
+//        }
         uint32_t type;
         _this->pipeReadLocker.lock();
         if (read(readerFd[0], &type, sizeof(int)) != sizeof(int)) {
@@ -208,6 +230,7 @@ bool database::saveToFile() {
                     log(error,"查找键值对失败");
                     uint32_t valueSize = 4;
                     value = "null";
+                    type += 3;//构造发送的type值
                     _this->pipeWriteLocker.lock();
                     pipeResult = write(senderFd[1],&type,4)==4;
                     pipeResult = pipeResult && write(senderFd[1],&valueSize,4) == 4;
@@ -224,6 +247,7 @@ bool database::saveToFile() {
                 else
                 {
                     uint32_t valueSize = value.size();
+                    type += 3;//构造发送的type值
                     _this->pipeWriteLocker.lock();
                     pipeResult = write(senderFd[1],&type,4)==4;
                     pipeResult = pipeResult && write(senderFd[1],&valueSize,4) == 4;
