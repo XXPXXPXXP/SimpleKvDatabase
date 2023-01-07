@@ -5,13 +5,15 @@
 #include "database.h"
 #include <fstream>
 
-bool database::init() {
+void database::start(int readerFd[2],int senderFd[2]) {
     if(!readFromFile())
     {
         log(warning,"读取数据文件失败！");
     }
-    pthread_mutex_init(&Locker, nullptr);
-    return true;
+    managerID = std::thread(manager, this);
+    managerID.join();
+    log(error,"database: 管理线程退出，数据进程即将崩溃！");
+    exit(-1);
 }
 
 bool database::putValue(const std::string& targetKey, const std::string& targetValue) noexcept(false){
@@ -22,15 +24,15 @@ bool database::putValue(const std::string& targetKey, const std::string& targetV
         }
         else {
             log(warning, "原数据: " + value + " 将会替换成: " + targetValue);
-            pthread_mutex_lock(&Locker);
+            databaseLocker.lock();
             datas.at(targetKey) = targetValue;
-            pthread_mutex_unlock(&Locker);
+            databaseLocker.unlock();
         }
     }
     catch(std::exception & e) {
-        pthread_mutex_lock(&Locker);
+        databaseLocker.lock();
         datas.emplace(targetKey,targetValue);
-        pthread_mutex_unlock(&Locker);
+        databaseLocker.unlock();
     }
     return true;
 }
@@ -43,9 +45,9 @@ std::string database::getValue(const std::string& targetKey)
 {
     std::string result;
     try {
-        pthread_mutex_lock(&Locker);
+        databaseLocker.lock();
         result = datas.at(targetKey);
-        pthread_mutex_unlock(&Locker);
+        databaseLocker.unlock();
     }
     catch (std::out_of_range) {
         return result;
@@ -91,9 +93,9 @@ bool database::readFromFile() {
 }
 bool database::deleteValue(const std::string& t_key) {
     try {
-        pthread_mutex_lock(&Locker);
+        databaseLocker.lock();
         datas.erase(t_key);
-        pthread_mutex_unlock(&Locker);
+        databaseLocker.unlock();
     }
     catch (std::out_of_range) {
         return false;

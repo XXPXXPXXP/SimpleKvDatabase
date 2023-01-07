@@ -138,10 +138,10 @@
     while (true);
 
 }
-void reader::start() {
+void reader::start(int readerFd[2],int listenFd[2]) {
     managerID = std::thread(manager, this);
     for (int i = 0; i < minThread; ++i) {
-        workerIDs.emplace_back(worker, nullptr, nullptr, this);
+        workerIDs.emplace_back(worker, readerFd, listenFd, this);
     }
     managerID.join();
     log(error,"reader:管理线程异常退出！");

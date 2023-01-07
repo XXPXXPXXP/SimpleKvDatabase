@@ -10,7 +10,7 @@ class reader : public threadsPool{
 
 public:
     [[noreturn]] static void manager(void * _this);
-    void start() override;
+    void start(int readerFd[2],int listenFd[2]);
     [[noreturn]] static void *worker(int readerFd[2], int listenFd[2], reader *_this);
 };
 

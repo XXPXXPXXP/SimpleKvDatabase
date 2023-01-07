@@ -13,7 +13,7 @@ void pipeHandle(int) {
 int listener::init(short port) {
     listenSockId = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSockId == -1) {
-        log(error, "socket init error!");
+        log(error, "socket start error!");
         return -1;
     }
     /* 创建基本的socket */
@@ -80,7 +80,10 @@ int listener::init(short port) {
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接卡服 */
         setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
-        write(listenFd[1],&targetSockId,sizeof(int));
+        if(write(listenFd[1],&targetSockId,sizeof(int))!= sizeof(int))
+        {
+            log(error,"listener: 无法向管道中写入数据！",listenFd[1]);
+        }
 
         /* 采用多进程来进行accept,线程进行处理  */
     }
@@ -90,6 +93,7 @@ void listener::stop() const {
     close(listenSockId);
 }
 void listener::start(int listenFd[2]) {
+
     for (int i = 0; i < ACCEPT_THREAD-1; ++i) {
         threads.emplace_back(listen, this,listenFd);
     }

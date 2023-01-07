@@ -6,10 +6,10 @@
 #define FINAL_PROJECT_WORKTHREAD_H
 #include <vector>
 #include "settings.h"
-#include "database.h"
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include "serverLog.h"
 class threadsPool {
 protected:
     const uint32_t maxThread = MAX_WORK_THREAD;
@@ -21,7 +21,6 @@ protected:
     std::mutex pipeLocker;
     /* 将会采用线程池来减少线程之间的重复销毁和创建 */
 public:
-    virtual void start() = 0;
     ~threadsPool(){
         log(warning,"线程池被回收！");
     }
