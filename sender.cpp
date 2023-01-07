@@ -42,12 +42,6 @@ void *sender::worker(int *senderFd, sender *_this) {
     int sockID;
     uint32_t type;
     while (true) {
-//        int num = epoll_wait(_this->pipeEpoll, _this->pipeEvent, sizeof(pipeEvent) / sizeof(struct epoll_event), -1);
-//        if (num < 1) {
-//            log(error, "sender:epoll队列异常！");
-//            sleep(1);
-//            continue;
-//        }
         _this->pipeLocker.lock();
         read(senderFd[0], &type, 4);
         switch (type) {

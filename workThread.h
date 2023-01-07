@@ -17,9 +17,6 @@ protected:
     std::vector<std::thread> workerIDs;
     std::thread managerID;
     std::mutex pipeLocker;
-    struct epoll_event pipeEvent[10];
-    struct epoll_event pipeEV{};
-    int pipeEpoll;
     /* 将会采用线程池来减少线程之间的重复销毁和创建 */
 public:
     ~threadsPool(){

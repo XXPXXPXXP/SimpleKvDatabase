@@ -2,8 +2,8 @@
 // Created by 神奇bug在哪里 on 2022/12/16.
 //
 
-#ifndef FINAL_PROJECT_LISTENER_H
-#define FINAL_PROJECT_LISTENER_H
+#ifndef FINAL_PROJECT_NETWORKIO_H
+#define FINAL_PROJECT_NETWORKIO_H
 
 /* 该分支不再能在mac上可用 */
 #include <netinet/in.h>
@@ -19,7 +19,7 @@
 /* 为了能够使用memset */
 #include <string>
 #include "database.h"
-class listener {
+class networkIO {
 private:
     int listenSockId = -1;
     struct sockaddr_in ipConfig;
@@ -30,9 +30,9 @@ private:
 public:
     int init(short port);
     /* 默认端口采用1433，也就是SQL的默认端口 */
-    [[noreturn]] static void listen(listener *_this, int listenFd[2]);
+    [[noreturn]] static void accepts(networkIO *_this, int listenFd[2]);
     void start(int listenFd[2]);
-    ~listener() {
+    ~networkIO() {
         log(warning, "server触发了回收!");
         stop();
     }
@@ -40,4 +40,4 @@ public:
     void stop() const;
 };
 
-#endif //FINAL_PROJECT_LISTENER_H
+#endif //FINAL_PROJECT_NETWORKIO_H

@@ -8,7 +8,7 @@
 #include <thread>
 #include "database.h"
 #include "settings.h"
-#include "listener.h"
+#include "networkIO.h"
 class init {
 private:
     std::vector<pid_t> pid;
@@ -18,15 +18,8 @@ public:
 
     [[noreturn]] void management();
 };
-struct args{
-    int sockID;
-    listener * server;
-    database * datas;
-};
 init * p_master;
 class init Master;
-database datas;
-void handler(int);
-void stopProcessor(int singleNum);
+void sigHandler(int);
 void sigsegvHandler(int);
 #endif//FINAL_PROJECT_INIT_H

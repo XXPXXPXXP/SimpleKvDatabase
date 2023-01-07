@@ -9,13 +9,6 @@
 [[noreturn]] void *reader::worker(int readerFd[2], int listenFd[2], reader *_this) {
     log(info,"Reader:工作线程创建成功！");
     while (true) {
-        int num = epoll_wait(_this->pipeEpoll, _this->pipeEvent, sizeof(pipeEvent) / sizeof(struct epoll_event), -1);
-        if (num < 1) {
-            log(error, "reader:epoll队列异常！");
-            sleep(1);
-            continue;
-        }
-        log(info,"reader:epoll事件触发！");
         int targetSockId = -1;
         if (read(listenFd[0],&targetSockId,sizeof (int))!= sizeof(int))
         {
@@ -146,20 +139,6 @@
 }
 void reader::start(int readerFd[2],int listenFd[2]) {
     //managerID = std::thread(manager, this);
-    pipeEpoll = epoll_create(1);
-    if (pipeEpoll == -1)
-    {
-        log(error,"reader:epoll队列异常！");
-        exit(errno);
-    }
-    pipeEV.data.fd = listenFd[0];
-    pipeEV.events = EPOLLIN;
-    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, listenFd[0], &pipeEV);
-    if (ret == -1) {
-        log(error, "reader: epoll_ctl error");
-        exit(errno);
-    }
-    /*epoll队列完成初始化*/
     close(readerFd[0]);
     /* 关闭reader管道的读端，该管道用于向数据库发送请求 */
     close(listenFd[1]);
