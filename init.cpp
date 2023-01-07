@@ -36,10 +36,6 @@ void init::exit()
 }
 
 [[noreturn]] void init::start() {
-    signal(SIGTERM, sigHandler); //注册信号处理函数
-    signal(SIGSEGV, sigsegvHandler);
-    signal(SIGINT, sigHandler);
-    signal(SIGSTOP, sigHandler);
     int readerFd[2],senderFd[2];
     /* 下面开始创建管道 */
     if (pipe(readerFd)==-1 || pipe(senderFd)==-1)
@@ -68,8 +64,13 @@ void init::exit()
     }
     pid.emplace_back(processorID);
     /* 下面父进程关闭管道 */
-   close(readerFd[0]);close(readerFd[1]);close(senderFd[0]);close(senderFd[1]);
+    close(readerFd[0]);close(readerFd[1]);close(senderFd[0]);close(senderFd[1]);
     log(info,"父进程已关闭全部管道!");
+    signal(SIGTERM, sigHandler); //注册信号处理函数
+    signal(SIGSEGV, sigsegvHandler);
+    signal(SIGINT, sigHandler);
+    signal(SIGSTOP, sigHandler);
+    log(info,"主进程信号处理函数注册完成");
     management();//父进程负责监听各子进程的异常退出情况
 }
 

@@ -157,8 +157,8 @@ bool database::saveToFile() {
                 readResult = _this->putValue(targetKey, targetValue);//这里重用了这个readResult
                 _this->pipeWriteLocker.lock();
                 bool pipeWrite = write(senderFd[1], &type, 4);
-                pipeWrite = pipeWrite && write(senderFd[1], &readResult, sizeof(bool)) != sizeof(bool);
-                pipeWrite = pipeWrite && write(senderFd[1], &sockID, sizeof(int)) != sizeof(int);
+                pipeWrite = pipeWrite && write(senderFd[1], &readResult, sizeof(bool)) == sizeof(bool);
+                pipeWrite = pipeWrite && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
                 _this->pipeLocker.unlock();
                 if (!pipeWrite) {
                     log(error, "管道发送错误！");
