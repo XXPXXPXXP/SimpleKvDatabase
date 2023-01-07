@@ -2,14 +2,14 @@
 // Created by 神奇bug在哪里 on 2023/1/5.
 //
 
-#ifndef FINAL_PROJECT_MASTER_H
-#define FINAL_PROJECT_MASTER_H
+#ifndef FINAL_PROJECT_INIT_H
+#define FINAL_PROJECT_INIT_H
 #include <vector>
 #include <thread>
 #include "database.h"
 #include "settings.h"
 #include "listener.h"
-class master {
+class init {
 private:
     std::vector<pid_t> pid;
 public:
@@ -27,4 +27,4 @@ struct args{
 void handler(int);
 void stopProcessor(int singleNum);
 void sigsegvHandler(int);
-#endif //FINAL_PROJECT_MASTER_H
+#endif//FINAL_PROJECT_INIT_H

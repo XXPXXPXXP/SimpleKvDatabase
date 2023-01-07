@@ -18,6 +18,7 @@
             log(error,"reader: 发生了管道读取错误!");
             continue;
         }
+        /* listen管道没有顺序要求。因此不用加锁 */
         uint32_t magic_number;
         while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
         {
@@ -102,13 +103,13 @@
                 {
                     uint32_t keySize;
                     std::string key;
+                    /* 下面开始读取来自socket的数据*/
                     if (read(targetSockId, &keySize, 4) < 0) {
                         log(error, "读取body: size失败！", targetSockId);
                         continue ;
                     }
                     key.resize(keySize);
                     long real_size = read(targetSockId, const_cast<char *>(key.data()), keySize);
-                    /* 这里不知道为什么要用常转换 */
                     if (real_size < 0) {
                         log(error, "读取Key出现错误!", targetSockId);
                         key.clear();
@@ -118,7 +119,7 @@
                         key.clear();
                         continue ;
                     }
-                    /* 向数据线程发送数据 */
+                    /* 下面向数据线程发送数据 */
                     _this->pipeLocker.lock();
                     write(readerFd[1],&type,4);
                     write(readerFd[1],&keySize,4);
@@ -139,11 +140,13 @@
 
 }
 void reader::start(int readerFd[2],int listenFd[2]) {
-    managerID = std::thread(manager, this);
+    //managerID = std::thread(manager, this);
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, readerFd, listenFd, this);
     }
-    managerID.join();
+    log(info,"reader:工作线程创建！");
+    //managerID.join();
+    workerIDs.at(0).join();
     log(error,"reader:管理线程异常退出！");
     exit(-1);
 }

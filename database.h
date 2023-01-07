@@ -22,11 +22,12 @@ public:
     bool deleteValue(const std::string& t_key);
     bool saveToFile();
     bool readFromFile();
-    static void worker(database *_this);
-    static void manager(database *_this);
+    [[noreturn]] static void worker(database *_this, int readerFd[2], int senderFd[2]);
+    [[noreturn]] static void manager(database *_this);
     ~database(){
-        log(warning,"Force exit tiggered!\nSaving datas now....");
+        log(warning,"Force exit!\nSaving datas now....");
         saveToFile();
     }
+    static void sigHelder(int);
 };
 #endif //FINAL_PROJECT_DATABASE_H

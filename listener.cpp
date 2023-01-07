@@ -93,7 +93,7 @@ void listener::stop() const {
     close(listenSockId);
 }
 void listener::start(int listenFd[2]) {
-
+    init(SERVER_PORT);
     for (int i = 0; i < ACCEPT_THREAD-1; ++i) {
         threads.emplace_back(listen, this,listenFd);
     }

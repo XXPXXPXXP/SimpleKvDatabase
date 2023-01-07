@@ -10,8 +10,9 @@ class sender : public threadsPool{
 private:
 public:
     [[noreturn]] static void manager(void * _this);
-    void start() override;
+    void start(int senderFd[2]) override;
     [[noreturn]] static void *worker(int *senderFd, sender *_this);
-
 };
+bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra);
+bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type);
 #endif//FINAL_PROJECT_SENDER_H

@@ -4,11 +4,11 @@
 //
 //  Created by 神奇bug在哪里 on 2022/12/14.
 //
-#include "master.h"
+#include "init.h"
 #include "listener.h"
 #include <wait.h>
-master * p_master;
-class master Master;
+init * p_master;
+class init Master;
 database datas;
 int main() {
     log(info,"starting...");
@@ -30,7 +30,7 @@ void stopProcessor(int singleNum) {
     exit(singleNum);
 }
 
-void master::exit()
+void init::exit()
 {
     for (int i = 0; i < pid.size(); ++i) {
         kill(pid.at(i),SIGTERM);
@@ -42,13 +42,13 @@ void master::exit()
     ::exit(0);
 }
 
-[[noreturn]] void master::start() {
+[[noreturn]] void init::start() {
     signal(SIGTERM, handler); //注册信号处理函数
     signal(SIGSEGV, sigsegvHandler);
 
 }
 
-int master::reader(void * args) {
+int init::reader(void * args) {
     log(info,"reader processor start success");
     signal(SIGTERM, stopProcessor);//注册子进程退出时的函数
     listener listen;
