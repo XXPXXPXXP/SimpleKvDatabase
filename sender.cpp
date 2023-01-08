@@ -25,7 +25,6 @@ void *sender::worker(int *senderFd, sender *_this) {
     int sockID;
     uint32_t type;
     while (true) {
-
         _this->pipeLocker.lock();
         read(senderFd[0], &type, 4);
         switch (type) {
@@ -53,8 +52,11 @@ void *sender::worker(int *senderFd, sender *_this) {
                 log(info,"sender:get开始准备发送");
                 read(senderFd[0], &valueSize, 4);
                 value.resize(valueSize);
+                log(info,"sender:从管道读取valueSize成功！");
                 read(senderFd[0], const_cast<char *>(value.data()), valueSize);
+                log(info,"sender:从管道读取value成功!value="+value);
                 read(senderFd[0], &sockID, sizeof(int));
+                log(info,"sender:从管道读取sockID成功！");
                 _this->pipeLocker.unlock();
                 log(info,"sender:get从管道获取数据完成");
                 sendHeader(sockID,sizeof(valueSize)+value.size(),type);

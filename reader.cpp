@@ -134,6 +134,8 @@
             }
             log(info, "reader: 数据已完成传递!");
         }
+        close(targetSockId);
+        log(warning,"连接已经被回收！",targetSockId);
     }
 }
 #pragma clang diagnostic pop
