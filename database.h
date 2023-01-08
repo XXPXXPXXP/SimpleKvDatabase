@@ -15,6 +15,7 @@ private:
     std::mutex databaseLocker;
     std::mutex pipeReadLocker;
     std::mutex pipeWriteLocker;
+    std::mutex saveLocker;
 public:
     void start(int readerFd[2],int senderFd[2]);
     bool putValue(const std::string& targetKey, const std::string& targetValue);

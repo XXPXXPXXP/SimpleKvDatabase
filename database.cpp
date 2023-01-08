@@ -109,6 +109,9 @@ bool database::deleteValue(const std::string &t_key) {
 }
 
 bool database::saveToFile() {
+    //这个函数理论上只会在退出的时候被调用
+    if(saveLocker.try_lock())
+    {
     uint32_t size;
     std::ofstream file;
     file.open("datas.dat", std::ios_base::out | std::ios_base::binary);
@@ -119,6 +122,7 @@ bool database::saveToFile() {
     log(info,"待保存的数据大小:",(int)datas.size());
     for (auto &data: datas) {
         std::string targetKey = data.first, targetValue = data.second;
+        size = targetKey.size();
         file.write(reinterpret_cast<char *>(&size), 4);
         file.write(targetKey.c_str(), size);
         size = targetValue.size();
@@ -129,7 +133,13 @@ bool database::saveToFile() {
     size = 0;
     file.write(reinterpret_cast<char *>(&size), 4);
     file.close();
+    saveLocker.unlock();
     return true;
+    }
+    else {
+        log(error, "数据库保存方法异常多次调用！");
+        return false;
+    }
 }
 
 [[noreturn]] void database::manager(database *_this) {
