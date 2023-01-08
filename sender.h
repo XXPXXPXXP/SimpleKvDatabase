@@ -8,6 +8,9 @@
 #include "workThread.h"
 class sender : public threadsPool{
 private:
+    struct epoll_event pipeEpollEvent[64];
+    struct epoll_event pipeEV{};
+    int pipeEpoll;
 public:
     [[noreturn]] static void manager(void * _this);
     void start(int senderFd[2]);

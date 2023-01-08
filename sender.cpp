@@ -8,6 +8,19 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-result"
 void sender::start(int senderFd[2]) {
+    pipeEpoll = epoll_create(1);
+    if (pipeEpoll == -1)
+    {
+        log(error,"sender:epoll队列无法创建");
+        exit(errno);
+    }
+    pipeEV.data.fd = senderFd[0];
+    pipeEV.events = EPOLLIN;
+    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, senderFd[0], &pipeEV);
+    if (ret == -1) {
+        log(error, "sender:epoll_ctl error");
+        exit(errno);
+    }
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, senderFd, this);
     }
@@ -24,7 +37,14 @@ void *sender::worker(int *senderFd, sender *_this) {
     log(info,"sender:工作线程创建!");
     int sockID;
     uint32_t type;
+    int size = sizeof(pipeEpollEvent) / sizeof(struct epoll_event);
     while (true) {
+        int num = epoll_wait(_this->pipeEpoll, _this->pipeEpollEvent, size, -1);
+        if (num < 1) {
+            log(error, "epoll队列异常！");
+            continue;
+        }
+        log(info,"sender:epoll触发!");
         _this->pipeLocker.lock();
         read(senderFd[0], &type, 4);
         switch (type) {

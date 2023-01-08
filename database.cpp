@@ -17,6 +17,19 @@ void database::start(int readerFd[2], int senderFd[2]) {
         log(warning, "读取数据文件失败！");
     }
     globalSignalPointer = this;
+    pipeEpoll = epoll_create(1);
+    if (pipeEpoll == -1)
+    {
+        log(error,"database:epoll队列无法创建");
+        exit(errno);
+    }
+    pipeEV.data.fd = readerFd[0];
+    pipeEV.events = EPOLLIN;
+    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, readerFd[0], &pipeEV);
+    if (ret == -1) {
+        log(error, "database:epoll_ctl error");
+        exit(errno);
+    }
     for (int i = 0; i < minThread; ++i) {
         workerIDs.emplace_back(worker, this, readerFd, senderFd);//创建工作线程
     }
@@ -147,12 +160,18 @@ bool database::saveToFile() {
 }
 
 [[noreturn]] void database::worker(database *_this, int readerFd[2], int senderFd[2]) {
-
+    int size = sizeof(pipeEpollEvent) / sizeof(struct epoll_event);
     while (true) {
         uint32_t type;
+        int num = epoll_wait(_this->pipeEpoll, _this->pipeEpollEvent, size, -1);
+        if (num < 1) {
+            log(error, "database: epoll队列异常！");
+            continue;
+        }
+        log(info,"database: epoll触发!");
         _this->pipeReadLocker.lock();
         if (read(readerFd[0], &type, sizeof(int)) != sizeof(int)) {
-            log(error, "database:从管道读取数据异常！");
+            log(warning, "database:从管道读取数据异常！");
             continue;
         }
         int sockID;

@@ -24,7 +24,7 @@ class networkIO {
 private:
     int listenSockId = -1;
     struct sockaddr_in ipConfig;
-    struct epoll_event listenEpollEvent[128];
+    struct epoll_event listenEpollEvent[64];
     struct epoll_event listenEV{};
     int listeningEpoll;
     std::vector<std::thread> acceptThreads;

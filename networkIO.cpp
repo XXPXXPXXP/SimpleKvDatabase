@@ -79,7 +79,7 @@ int networkIO::init(short port) {
         }
         log(info, "accepts:accept成功！", targetSockId);
         struct timeval timeOut{};
-        timeOut.tv_sec = 10;
+        timeOut.tv_sec = 1;
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接一直不释放 */
         setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));

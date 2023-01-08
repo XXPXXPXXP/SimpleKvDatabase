@@ -16,6 +16,9 @@ private:
     std::mutex pipeReadLocker;
     std::mutex pipeWriteLocker;
     std::mutex saveLocker;
+    struct epoll_event pipeEpollEvent[128];
+    struct epoll_event pipeEV{};
+    int pipeEpoll;
 public:
     void start(int readerFd[2],int senderFd[2]);
     bool putValue(const std::string& targetKey, const std::string& targetValue);

@@ -11,13 +11,14 @@
     while (true) {
         if (_this->targetSockIds.empty())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));//50ms轮询是否有新任务
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));//1ms轮询是否有新任务
             continue;
         }
         _this->taskLocker.lock();
         int targetSockId = _this->targetSockIds.front();
         _this->targetSockIds.pop();
         _this->taskLocker.unlock();
+        log(info,"reader:已获取到任务！");
         /* 从任务列表中取出任务 */
         uint32_t magic_number;
         while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
