@@ -8,6 +8,7 @@
 #include "settings.h"
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include "serverLog.h"
 #include "sys/epoll.h"
 class threadsPool {
@@ -17,6 +18,7 @@ protected:
     std::vector<std::thread> workerIDs;
     std::thread managerID;
     std::mutex pipeLocker;
+
     int workingNum;   //忙的线程数
     int onlineNum;    //存活的线程数
     int destroyNum;    //要销毁的线程数
@@ -33,6 +35,7 @@ public:
         minThread = MIN_WORK_THREAD;
         log(info,"线程池构造函数完成处理！");
     }
+    virtual void taskerReceive() = 0;
 };
 
 

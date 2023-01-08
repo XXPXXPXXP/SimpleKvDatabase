@@ -4,6 +4,13 @@
 
 #include "reader.h"
 #include <unistd.h>
+reader::reader(int readerFD[2]) {
+    managerID = std::thread(manager, this);
+    for (int i = 0; i < minThread; ++i) {
+        workerIDs.emplace_back(worker, readerFD,this);
+    }
+    onlineNum = minThread;
+}
 [[noreturn]] void *reader::worker(int readerFd[2], reader *_this) {
     log(info,"Reader:工作线程创建成功！");
     while (true) {
@@ -139,12 +146,6 @@
 }
 [[noreturn]] void reader::manager(void *_this) {
     while (true);
-}
-reader::reader(int readerFD[2]) {
-    managerID = std::thread(manager, this);
-    for (int i = 0; i < minThread; ++i) {
-        workerIDs.emplace_back(worker,this);
-    }
 }
 
 void reader::addTask(int targetSockID) {
