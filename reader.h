@@ -12,7 +12,7 @@ class reader : public threadsPool{
     std::vector<std::thread> runningSingleModeThreads;
 public:
     [[noreturn]] static void manager(void *_this);
-    void start(int readerFd[2]);
+    reader(int readerFd[2]);
     [[noreturn]] static void *worker(int readerFd[2],reader *_this);
     static void *singleWorker(reader *_this, int targetSockId, int readerFd[2]);
     void addTask(int targetSockID);

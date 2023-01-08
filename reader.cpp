@@ -4,8 +4,6 @@
 
 #include "reader.h"
 #include <unistd.h>
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-result"
 [[noreturn]] void *reader::worker(int readerFd[2], reader *_this) {
     log(info,"Reader:工作线程创建成功！");
     while (true) {
@@ -139,15 +137,14 @@
         log(warning,"连接已经被回收！",targetSockId);
     }
 }
-#pragma clang diagnostic pop
 [[noreturn]] void reader::manager(void *_this) {
     while (true);
 }
-void reader::start(int readerFD[2]) {
-    //managerID = std::thread(manager, this);
-//    for (int i = 0; i < minThread; ++i) {
-//        workerIDs.emplace_back(worker,this);
-//    }
+reader::reader(int readerFD[2]) {
+    managerID = std::thread(manager, this);
+    for (int i = 0; i < minThread; ++i) {
+        workerIDs.emplace_back(worker,this);
+    }
 }
 
 void reader::addTask(int targetSockID) {

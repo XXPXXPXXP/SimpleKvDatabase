@@ -14,7 +14,7 @@ void pipeHandle(int) {
 int networkIO::init(short port) {
     listenSockId = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSockId == -1) {
-        log(error, "socket start error!");
+        log(error, "socket reader error!");
         return -1;
     }
     /* 创建基本的socket */
@@ -36,7 +36,7 @@ int networkIO::init(short port) {
         return -1;
     }
     log(info, "Trying startup listening....");
-    if (::listen(listenSockId, MAX_SOCKET) < 0) {
+    if (::listen(listenSockId, ACCEPT_QUEUE) < 0) {
         log(error, "reader startup error!");
         exit(errno);
     }
@@ -100,7 +100,7 @@ void networkIO::start(int readerFd[2], int senderFd[2]) {
         acceptThreads.emplace_back(accepts, this,readerFd);
     }
     /* 启动监听线程 */
-    readerPool.start(readerFd);
+    readerPool.reader(readerFd);
     senderPool.start(senderFd);
     /* 启动网络IO线程池 */
     acceptThreads.at(0).join();

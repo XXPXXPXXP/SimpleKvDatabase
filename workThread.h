@@ -12,15 +12,26 @@
 #include "sys/epoll.h"
 class threadsPool {
 protected:
-    const uint32_t maxThread = MAX_WORK_THREAD;
-    const uint32_t minThread = MIN_WORK_THREAD;
+    uint32_t maxThread;
+    uint32_t minThread;
     std::vector<std::thread> workerIDs;
     std::thread managerID;
     std::mutex pipeLocker;
+    int workingNum;   //忙的线程数
+    int onlineNum;    //存活的线程数
+    int destroyNum;    //要销毁的线程数
     /* 将会采用线程池来减少线程之间的重复销毁和创建 */
 public:
     ~threadsPool(){
         log(warning,"线程池被回收！");
+    }
+    threadsPool(){
+        workingNum = 0;
+        onlineNum = 0;
+        destroyNum = 0;
+        maxThread = MAX_WORK_THREAD;
+        minThread = MIN_WORK_THREAD;
+        log(info,"线程池构造函数完成处理！");
     }
 };
 
