@@ -35,7 +35,7 @@ private:
 public:
     int init(short port);
     /* 默认端口采用1433，也就是SQL的默认端口 */
-    [[noreturn]] static void accepts(networkIO *_this);
+    [[noreturn]] static void accepts(networkIO *_this, int readerFd[2]);
     void start(int readerFd[2], int senderFd[2]);
     ~networkIO() {
         log(warning, "server触发了回收!");

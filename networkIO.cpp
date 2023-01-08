@@ -62,7 +62,7 @@ int networkIO::init(short port) {
 
 }
 
-[[noreturn]] void networkIO::accepts(networkIO *_this) {
+[[noreturn]] void networkIO::accepts(networkIO *_this, int readerFd[2]) {
     log(info,"accepts: 工作线程创建！");
     int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
@@ -79,12 +79,12 @@ int networkIO::init(short port) {
         }
         log(info, "accepts:accept成功！", targetSockId);
         struct timeval timeOut{};
-        timeOut.tv_sec = 1;
+        timeOut.tv_sec = 3;
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接一直不释放 */
         setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
         /* 下面开始处理交由reader处理 */
-        _this->readerPool.addTask(targetSockId);
+        _this->readerPool.addSingleTask(targetSockId, readerFd);
     }
 }
 
@@ -97,7 +97,7 @@ void networkIO::start(int readerFd[2], int senderFd[2]) {
     log(info,"listener:开始初始化");
     init(SERVER_PORT);
     for (int i = 0; i < ACCEPT_THREAD; ++i) {
-        acceptThreads.emplace_back(accepts, this);
+        acceptThreads.emplace_back(accepts, this,readerFd);
     }
     /* 启动监听线程 */
     readerPool.start(readerFd);
