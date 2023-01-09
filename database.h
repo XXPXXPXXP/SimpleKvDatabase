@@ -9,13 +9,13 @@
 #include <mutex>
 #include "serverLog.h"
 #include "threadPool.h"
+#include <string>
 class database : public threadPool{
 private:
-    std::map<std::string,std::string> datas;
+    std::map<std::string,std::string> datas; //主要的数据存储结构
     std::mutex databaseLocker;
-    std::mutex saveLocker;
     std::mutex pipeLocker;
-    threadPool databaseThreadPool;
+    threadPool databaseThreadPool; //线程池
 
 public:
     void start(int readerFd[2],int senderFd[2]);
@@ -25,11 +25,12 @@ public:
     bool saveToFile();
     bool readFromFile();
     [[noreturn]] void taskSync(int readerFd[2],int senderFd[2]);
-    void putResponse(string &targetKey, string &targetValue, int sockID, int senderFd[2]);
-    void deleteResponse(string &targetKey, int sockID, int senderFd[2]);
-    void getResponse(string & targetKey, int sockID, int senderFd[2]);
+    void putResponse(std::string targetKey, std::string targetValue, int sockID, int senderFd[2]);
+    void deleteResponse(std::string &targetKey, int sockID, int senderFd[2]);
+    void getResponse(std::string & targetKey, int sockID, int senderFd[2]);
     ~database(){
         log(warning,"Force exit!\nSaving datas now....");
+        databaseThreadPool.stop();
         saveToFile();
     }
     static void sigHelder(int);

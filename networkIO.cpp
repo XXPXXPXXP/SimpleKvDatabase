@@ -84,7 +84,7 @@ int networkIO::init(short port) {
         timeOut.tv_sec = 3;
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接一直不释放 */
-        setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
+        //setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
         /* 下面开始处理交由reader处理 */
         _this->networkIoThreads.addTasks(std::bind(&networkIO::reader, _this, readerFd, targetSockId));
     }
@@ -102,8 +102,6 @@ void networkIO::start(int readerFd[2], int senderFd[2]) {
     for (int i = 0; i < ACCEPT_THREAD; ++i) {
         acceptThreads.emplace_back(accepts, this, readerFd);
     }
-    /* 启动监听线程 */
-    acceptThreads.at(0).join();
     /* 启动sender的任务同步方法 */
     senderTaskerGetter(senderFd);
 
@@ -308,7 +306,7 @@ void networkIO::deleteResponse(bool status, int sockID) {
         log(error,"sender:deleteResponse发送失败！");
 }
 
-void networkIO::getResponse(uint32_t size, string &targetValue, int sockID) {
+void networkIO::getResponse(uint32_t size, std::string &targetValue, int sockID) {
     bool result;
     result = sendHeader(sockID, sizeof(uint32_t)+targetValue.size(),5);
     result = result && sendField(sockID,&size, sizeof(size),MSG_NOSIGNAL);

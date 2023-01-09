@@ -44,7 +44,7 @@ public:
     void *reader(int *readerFd, int targetSockId);
     void putResponse(bool status,int sockID);
     void deleteResponse(bool status, int sockID);
-    void getResponse(uint32_t size,string & targetValue, int sockID);
+    void getResponse(uint32_t size,std::string & targetValue, int sockID);
 };
 bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra);
 bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type);

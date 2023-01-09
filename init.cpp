@@ -70,12 +70,15 @@ void init::exit()
     signal(SIGSEGV, sigHandler);
     signal(SIGINT, sigHandler);
     signal(SIGSTOP, sigHandler);
+    signal(SIGKILL, sigHandler);
+    signal(SIGQUIT,sigHandler);
     log(info,"主进程信号处理函数注册完成");
     management();//父进程负责监听各子进程的异常退出情况
 }
 
 [[noreturn]] void init::management() {
-    waitpid(pid.at(0), nullptr,0);
+    while (true);
+    //waitpid(pid.at(0), nullptr,0);
     exit();
     ::exit(-1);
 }
