@@ -18,10 +18,10 @@ void database::start(int readerFd[2], int senderFd[2]) {
     if (!readFromFile()) {
         log(warning, "数据文件读取失败！");
     }
+    globalSignalPointer = this;
     signal(SIGTERM, sigHelder);
     log(info, "database:start success！");
-    putValue("ServerVersion","5.0");
-    taskSync(readerFd, senderFd);//主线程负责从管道读取数据并且
+    taskSync(readerFd, senderFd);//主线程负责从管道读取数据并添加到任务列表
     exit(-1);
 }
 
