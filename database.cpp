@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-avoid-bind"
 #pragma ide diagnostic ignored "performance-inefficient-string-concatenation"
 //
 // Created by 神奇bug在哪里 on 2022/12/24.
@@ -6,41 +8,26 @@
 #include <fstream>
 #include <csignal>
 #include <unistd.h>
+#include <functional>
 
 database *globalSignalPointer;
 
 void database::start(int readerFd[2], int senderFd[2]) {
     close(readerFd[1]);//reader仅读取
     close(senderFd[0]);//sender仅写入
-    signal(SIGTERM, sigHelder);
-    if (!readFromFile()) {
-        log(warning, "读取数据文件失败！");
-    }
-    globalSignalPointer = this;
-    pipeEpoll = epoll_create(1);
-    if (pipeEpoll == -1)
+    if (!readFromFile())
     {
-        log(error,"database:epoll队列无法创建");
-        exit(errno);
+        log(warning,"数据文件读取失败！");
     }
-    pipeEV.data.fd = readerFd[0];
-    pipeEV.events = EPOLLIN;
-    int ret = epoll_ctl(pipeEpoll, EPOLL_CTL_ADD, readerFd[0], &pipeEV);
-    if (ret == -1) {
-        log(error, "database:epoll_ctl error");
-        exit(errno);
-    }
-    for (int i = 0; i < minThread; ++i) {
-        workerIDs.emplace_back(worker, this, readerFd, senderFd);//创建工作线程
-    }
-    log(info, "database:工作线程创建！");
-    workerIDs.at(0).join();
+    signal(SIGTERM, sigHelder);
+    log(info, "database:start success！");
+    taskSync(readerFd,senderFd);//主线程负责从管道读取数据并且
     exit(-1);
 }
 
 bool database::putValue(const std::string &targetKey, const std::string &targetValue) noexcept(false) {
     try {
-        std::string value = datas.at(targetKey);
+        std::string value = datas.at(targetKey); //判断要写入的数据是否已经存在
         if (value == targetValue) {
             log(warning, "待写入的数据: " + targetValue + " 已经存在!");
         } else {
@@ -49,7 +36,7 @@ bool database::putValue(const std::string &targetKey, const std::string &targetV
             datas.at(targetKey) = targetValue;
             databaseLocker.unlock();
         }
-    } catch (std::exception &e) {
+    } catch (std::exception &e) {//若不存在则会出现out_of_range错误并被捕获，然后再向容器中写入数据
         databaseLocker.lock();
         datas.emplace(targetKey, targetValue);
         databaseLocker.unlock();
@@ -68,7 +55,7 @@ std::string database::getValue(const std::string &targetKey)
         databaseLocker.lock();
         result = datas.at(targetKey);
         databaseLocker.unlock();
-        log(warning,"database:数据库中找到已经存在的数据!value="+result);
+        log(info, "database:数据库中找到已经存在的数据:value=" + result);
     } catch (std::exception &e) {
         return result;
     }
@@ -115,7 +102,7 @@ bool database::deleteValue(const std::string &t_key) {
         datas.erase(t_key);
         databaseLocker.unlock();
     } catch (std::exception &e) {
-        log(warning,"待删除的数据不存在！");
+        log(warning, "待删除的数据不存在！");
         return false;
     }
     return true;
@@ -123,58 +110,52 @@ bool database::deleteValue(const std::string &t_key) {
 
 bool database::saveToFile() {
     //这个函数理论上只会在退出的时候被调用
-    if(saveLocker.try_lock())
+    if (saveLocker.try_lock())//仅供调试的时候用
     {
-    uint32_t size;
-    std::ofstream file;
-    file.open("datas.dat", std::ios_base::out | std::ios_base::binary);
-    if (!file.is_open()) {
-        log(error, "文件保存失败！");
-        return false;
-    }
-    log(info,"待保存的数据大小:",(int)datas.size());
-    for (auto &data: datas) {
-        std::string targetKey = data.first, targetValue = data.second;
-        size = targetKey.size();
+        uint32_t size;
+        std::ofstream file;
+        file.open("datas.dat", std::ios_base::out | std::ios_base::binary);
+        if (!file.is_open()) {
+            log(error, "文件保存失败！");
+            return false;
+        }
+        log(info, "待保存的数据大小:", (int) datas.size());
+        for (auto &data: datas) {
+            std::string targetKey = data.first, targetValue = data.second;
+            size = targetKey.size();
+            file.write(reinterpret_cast<char *>(&size), 4);
+            file.write(targetKey.c_str(), size);
+            size = targetValue.size();
+            file.write(reinterpret_cast<char *>(&size), 4);
+            file.write(targetValue.c_str(), size);
+            log(info, "已写入到文件,key=" + targetKey + "value=" + targetValue);
+        }
+        size = 0;
         file.write(reinterpret_cast<char *>(&size), 4);
-        file.write(targetKey.c_str(), size);
-        size = targetValue.size();
-        file.write(reinterpret_cast<char *>(&size), 4);
-        file.write(targetValue.c_str(), size);
-        log(info, "已写入到文件,key=" + targetKey + "value=" + targetValue);
-    }
-    size = 0;
-    file.write(reinterpret_cast<char *>(&size), 4);
-    file.close();
-    saveLocker.unlock();
-    return true;
-    }
-    else {
+        file.close();
+        saveLocker.unlock();
+        return true;
+    } else {
         log(error, "数据库保存方法异常多次调用！");
         return false;
     }
 }
 
-[[noreturn]] void database::manager(database *_this) {
-    while (true);
+void database::sigHelder(int signum) {
+    log(warning, "数据进程收到信号！", signum);
+    globalSignalPointer->saveToFile();
+    exit(signum);
 }
 
-[[noreturn]] void database::worker(database *_this, int readerFd[2], int senderFd[2]) {
-    int size = sizeof(pipeEpollEvent) / sizeof(struct epoll_event);
-    while (true) {
-        uint32_t type;
-        int num = epoll_wait(_this->pipeEpoll, _this->pipeEpollEvent, size, -1);
-        if (num < 1) {
-            log(error, "database: epoll队列异常！");
-            continue;
-        }
-        log(info,"database: epoll触发!");
-        _this->pipeReadLocker.lock();
+void database::taskSync(int *readerFd, int *senderFd) {
+    uint32_t type=0;
+    int sockID=-1;
+    while(true)
+    {
         if (read(readerFd[0], &type, sizeof(int)) != sizeof(int)) {
             log(warning, "database:从管道读取数据异常！");
             continue;
         }
-        int sockID;
         switch (type) {
             case 0://put
             {
@@ -186,25 +167,13 @@ bool database::saveToFile() {
                 readResult = readResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
                 readResult = readResult && read(readerFd[0], &valueSize, 4) == 4;
                 targetValue.resize(valueSize);
-                readResult =
-                        readResult && read(readerFd[0], const_cast<char *>(targetValue.data()), valueSize) == valueSize;
+                readResult = readResult && read(readerFd[0], const_cast<char *>(targetValue.data()), valueSize) == valueSize;
                 readResult = readResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
-                _this->pipeReadLocker.unlock();
-                type += 3;//构造发送的type值
                 if (!readResult) {
                     log(error, "database：管道读取异常！");
                 }
-                log(info, "database:处理put请求:key=" + targetKey + " value=" + targetValue);
-                readResult = _this->putValue(targetKey, targetValue);//这里重用了这个readResult
-                _this->pipeWriteLocker.lock();
-                bool pipeWrite = write(senderFd[1], &type, 4);
-                pipeWrite = pipeWrite && write(senderFd[1], &readResult, sizeof(bool)) == sizeof(bool);
-                pipeWrite = pipeWrite && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
-                _this->pipeWriteLocker.unlock();
-                if (!pipeWrite) {
-                    log(error, "管道发送错误！");
-                    continue;
-                }
+                log(info,"database:收到put请求！");
+                databaseThreadPool.addTasks(std::bind(&database::putResponse, this, targetKey, targetValue, sockID, senderFd));
                 break;
             }
             case 1://delete
@@ -215,86 +184,96 @@ bool database::saveToFile() {
                 targetKey.resize(keySize);
                 pipeResult = pipeResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
                 pipeResult = pipeResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
-                _this->pipeReadLocker.unlock();
                 if (!pipeResult) {
                     log(error, "database: 管道read出现错误！");
-                    continue;
                 }
                 log(info, "database:收到delete请求!key=" + targetKey);
-                type += 3;//构造发送的type值
-                bool result = _this->deleteValue(targetKey);
-                _this->pipeWriteLocker.lock();
-                pipeResult = write(senderFd[1], &type, 4) == 4;
-                pipeResult = pipeResult && write(senderFd[1], &result, sizeof(bool)) == sizeof(bool);
-                pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
-                _this->pipeWriteLocker.unlock();
-                if (!pipeResult) {
-                    log(error, "database: 管道read出现错误！");
-                    continue;
-                }
+                databaseThreadPool.addTasks(std::bind(&database::deleteResponse,this,targetKey,sockID,senderFd));
                 break;
             }
-            case 2: {//get
+            case 2:
+            {
                 uint32_t keySize;
                 std::string targetKey;
                 bool pipeResult = read(readerFd[0], &keySize, 4) == 4;
                 targetKey.resize(keySize);
                 pipeResult = pipeResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
                 pipeResult = pipeResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
-                _this->pipeReadLocker.unlock();
                 if (!pipeResult) {
                     log(error, "database: reader管道出现异常！");
-                    continue;
                 }
                 log(info, "database:处理Get请求:key=" + targetKey);
-                std::string value = _this->getValue(targetKey);
-                if (value.empty()) {
-                    log(error, "查找键值对失败");
-                    uint32_t valueSize = 4;
-                    value = "null";
-                    type += 3;//构造发送的type值
-                    _this->pipeWriteLocker.lock();
-                    pipeResult = write(senderFd[1], &type, 4) == 4;
-                    pipeResult = pipeResult && write(senderFd[1], &valueSize, 4) == 4;
-                    pipeResult =
-                            pipeResult && write(senderFd[1], const_cast<char *>(value.data()), valueSize) == valueSize;
-                    pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
-                    _this->pipeWriteLocker.unlock();
-                    if (!pipeResult) {
-                        log(error, "database: sender管道出现异常！");
-                        continue;
-                    }
-                    log(info, "database:Get请求完成处理，已经放回管道");
-                    break;
-                } else {
-                    uint32_t valueSize = value.size();
-                    type += 3;//构造发送的type值
-                    log(info, "database:查找键值对成功！value=" + value);
-                    _this->pipeWriteLocker.lock();
-                    pipeResult = write(senderFd[1], &type, 4) == 4;
-                    pipeResult = pipeResult && write(senderFd[1], &valueSize, 4) == 4;
-                    pipeResult =
-                            pipeResult && write(senderFd[1], const_cast<char *>(value.data()), valueSize) == valueSize;
-                    pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
-                    _this->pipeWriteLocker.unlock();
-                    log(info, "database:数据写入管道成功");
-                    if (!pipeResult) {
-                        log(error, "database: sender管道出现异常！");
-                        continue;
-                    }
-                    break;
-                }
-
+               databaseThreadPool.addTasks(std::bind(&database::getResponse,this,targetKey,sockID,senderFd));
+                break;
             }
             default:
-                log(error, "database:type错误");
-                break;
+            {
+                log(error,"database:错误的type！");
+                continue;
+            }
+        }//从管道中解析任务并且添加对应的任务到线程池
+    }
+}
+
+void database::putResponse(string &targetKey, string &targetValue, int sockID, int senderFd[2]) {
+    uint32_t type = 3;
+    bool result = putValue(targetKey,targetValue);
+    pipeLocker.lock();
+    bool pipeWrite = write(senderFd[1], &type, 4);
+    pipeWrite = pipeWrite && write(senderFd[1], &result, sizeof(bool)) == sizeof(bool);
+    pipeWrite = pipeWrite && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
+    if (!pipeWrite) {
+        log(error, "管道发送错误！");
+    }
+    pipeLocker.unlock();
+}
+
+void database::deleteResponse(string &targetKey, int sockID, int senderFd[2]) {
+    uint32_t type = 4;
+    bool result = deleteValue(targetKey);
+    pipeLocker.lock();
+    bool pipeResult = write(senderFd[1], &type, 4) == 4;
+    pipeResult = pipeResult && write(senderFd[1], &result, sizeof(bool)) == sizeof(bool);
+    pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
+    pipeLocker.unlock();
+    if (!pipeResult) {
+        log(error, "database: 管道read出现错误！");
+    }
+}
+
+void database::getResponse(string &targetKey, int sockID, int senderFd[2]) {
+    uint32_t type = 5;
+    std::string value = getValue(targetKey);
+    bool pipeResult;
+    if (value.empty()) {
+        log(error, "查找键值对失败");
+        uint32_t valueSize = 4;
+        value = "null";
+        pipeLocker.lock();
+        pipeResult = write(senderFd[1], &type, 4) == 4;
+        pipeResult = pipeResult && write(senderFd[1], &valueSize, 4) == 4;
+        pipeResult =
+                pipeResult && write(senderFd[1], const_cast<char *>(value.data()), valueSize) == valueSize;
+        pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
+       pipeLocker.unlock();
+        if (!pipeResult) {
+            log(error, "database: sender管道出现异常！");
+        }
+        log(info, "database:Get请求完成处理，已经放回管道");
+    } else {
+        uint32_t valueSize = value.size();
+        log(info, "database:查找键值对成功！value=" + value);
+        pipeResult = write(senderFd[1], &type, 4) == 4;
+        pipeResult = pipeResult && write(senderFd[1], &valueSize, 4) == 4;
+        pipeResult =
+                pipeResult && write(senderFd[1], const_cast<char *>(value.data()), valueSize) == valueSize;
+        pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
+        log(info, "database:数据写入管道成功");
+        if (!pipeResult) {
+            log(error, "database: sender管道出现异常！");
         }
     }
 }
 
-void database::sigHelder(int signum) {
-    log(warning, "数据进程收到信号！", signum);
-    globalSignalPointer->saveToFile();
-    exit(signum);
-}
+
+#pragma clang diagnostic pop

@@ -5,7 +5,6 @@
 #ifndef FINAL_PROJECT_SENDER_H
 #define FINAL_PROJECT_SENDER_H
 #include <string>
-#include "workThread.h"
 class sender : public threadsPool{
 private:
     struct epoll_event pipeEpollEvent[64];

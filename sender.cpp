@@ -34,25 +34,8 @@ void sender::manager(void *_this) {
 }
 
 void *sender::worker(int *senderFd, sender *_this) {
-    log(info,"sender:工作线程创建!");
-    int sockID;
-    uint32_t type;
-    int size = sizeof(pipeEpollEvent) / sizeof(struct epoll_event);
-    while (true) {
-        int num = epoll_wait(_this->pipeEpoll, _this->pipeEpollEvent, size, -1);
-        if (num < 1) {
-            log(error, "epoll队列异常！");
-            continue;
-        }
-        log(info,"sender:epoll触发!");
-        _this->pipeLocker.lock();
-        read(senderFd[0], &type, 4);
         switch (type) {
             case 3: {//put
-                bool status;
-                read(senderFd[0], &status, sizeof(bool));
-                read(senderFd[0], &sockID, 4);
-                _this->pipeLocker.unlock();
                 sendHeader(sockID, 1, 3);
                 sendField(sockID, &status, sizeof(bool), MSG_NOSIGNAL);
                 break;
@@ -61,7 +44,6 @@ void *sender::worker(int *senderFd, sender *_this) {
                 bool status;
                 read(senderFd[0], &status, sizeof(bool));
                 read(senderFd[0], &sockID, sizeof(int));
-                _this->pipeLocker.unlock();
                 sendHeader(sockID, 1, 4);
                 sendField(sockID, &status, sizeof(bool), MSG_NOSIGNAL);
                 break;
@@ -90,7 +72,7 @@ void *sender::worker(int *senderFd, sender *_this) {
                 break;
         }
     }
-}
+
 
 bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra)
 /*

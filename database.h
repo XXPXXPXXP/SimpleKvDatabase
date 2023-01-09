@@ -4,21 +4,19 @@
 
 #ifndef FINAL_PROJECT_DATABASE_H
 #define FINAL_PROJECT_DATABASE_H
-#include "workThread.h"
 #include <deque>
 #include <map>
 #include <mutex>
 #include "serverLog.h"
-class database : public threadsPool{
+#include "threadPool.h"
+class database : public threadPool{
 private:
     std::map<std::string,std::string> datas;
     std::mutex databaseLocker;
-    std::mutex pipeReadLocker;
-    std::mutex pipeWriteLocker;
     std::mutex saveLocker;
-    struct epoll_event pipeEpollEvent[128];
-    struct epoll_event pipeEV{};
-    int pipeEpoll;
+    std::mutex pipeLocker;
+    threadPool databaseThreadPool;
+
 public:
     void start(int readerFd[2],int senderFd[2]);
     bool putValue(const std::string& targetKey, const std::string& targetValue);
@@ -26,8 +24,10 @@ public:
     bool deleteValue(const std::string& t_key);
     bool saveToFile();
     bool readFromFile();
-    [[noreturn]] static void worker(database *_this, int readerFd[2], int senderFd[2]);
-    [[noreturn]] static void manager(database *_this);
+    [[noreturn]] void taskSync(int readerFd[2],int senderFd[2]);
+    void putResponse(string &targetKey, string &targetValue, int sockID, int senderFd[2]);
+    void deleteResponse(string &targetKey, int sockID, int senderFd[2]);
+    void getResponse(string & targetKey, int sockID, int senderFd[2]);
     ~database(){
         log(warning,"Force exit!\nSaving datas now....");
         saveToFile();

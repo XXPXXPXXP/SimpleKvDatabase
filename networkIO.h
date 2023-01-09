@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <deque>
 #include "serverLog.h"
-#include "workThread.h"
+#include "threadPool.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
@@ -18,8 +18,6 @@
 #include <cstring>
 /* 为了能够使用memset */
 #include <string>
-#include "reader.h"
-#include "sender.h"
 class networkIO {
 private:
     int listenSockId = -1;
@@ -28,10 +26,9 @@ private:
     struct epoll_event listenEV{};
     int listeningEpoll;
     std::vector<std::thread> acceptThreads;
-    std::vector<std::thread> readerThreads;
-    reader readerPool;
-    sender senderPool;
-
+    threadPool networkIoThreads;
+    std::mutex pipeReadLocker;
+    std::mutex pipeWriteLocker;
 public:
     int init(short port);
     /* 默认端口采用1433，也就是SQL的默认端口 */
@@ -43,6 +40,9 @@ public:
     }
 
     void stop() const;
+    [[noreturn]]void senderTaskerSync(int * senderFd);
+    void *sender(int *senderFd);
+    void *reader(int *readerFd, int targetSockId);
 };
 
 #endif //FINAL_PROJECT_NETWORKIO_H
