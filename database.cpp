@@ -216,15 +216,18 @@ void database::taskSync(int *readerFd, int *senderFd) {
 }
 
 void database::putResponse(string &targetKey, string &targetValue, int sockID, int senderFd[2]) {
+    log(info,"database:子线程开始处理");
     uint32_t type = 3;
     bool result = putValue(targetKey,targetValue);
     pipeLocker.lock();
+    log(info,"database:子线程获取到锁!");
     bool pipeWrite = write(senderFd[1], &type, 4);
     pipeWrite = pipeWrite && write(senderFd[1], &result, sizeof(bool)) == sizeof(bool);
     pipeWrite = pipeWrite && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
     if (!pipeWrite) {
         log(error, "管道发送错误！");
     }
+    log(info,"子线程已释放锁!");
     pipeLocker.unlock();
 }
 

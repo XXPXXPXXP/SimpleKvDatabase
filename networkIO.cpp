@@ -238,8 +238,8 @@ void networkIO::senderTaskerGetter(int *senderFd) {
      * return: 该函数不会返回，将在主线程中持续运行
      * 参数列表: senderFd:用于与database进行通信的管道，仅保留读端
      */
+    log(info, "sender:任务获取开始!");
     while (true) {
-        log(info, "sender:工作线程创建!");
         int sockID;
         uint32_t type;
         /* 从管道读取任务目前是单线程，因此可以不用加锁 */
