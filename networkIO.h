@@ -28,7 +28,7 @@ private:
     std::vector<std::thread> acceptThreads;
     threadPool networkIoThreads;
     std::mutex pipeReadLocker;
-    std::mutex pipeWriteLocker;
+    std::mutex pipeSendLocker;
 public:
     int init(short port);
     /* 默认端口采用1433，也就是SQL的默认端口 */
@@ -40,9 +40,12 @@ public:
     }
 
     void stop() const;
-    [[noreturn]]void senderTaskerSync(int * senderFd);
-    void *sender(int *senderFd);
+    [[noreturn]] void senderTaskerGetter(int *senderFd);
     void *reader(int *readerFd, int targetSockId);
+    void putResponse(bool status,int sockID);
+    void deleteResponse(bool status, int sockID);
+    void getResponse(uint32_t size,string & targetValue, int sockID);
 };
-
+bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra);
+bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type);
 #endif //FINAL_PROJECT_NETWORKIO_H
