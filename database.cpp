@@ -13,6 +13,10 @@ void pipeReader(int fd, void *buf, uint32_t bytes);
 database *globalSignalPointer = nullptr;
 
 void database::start(int readerFd[2], int senderFd[2]) {
+    /*
+     * description: 数据进程的入口
+     * return: 不会返回
+     */
     close(readerFd[1]);//reader仅读取
     close(senderFd[0]);//sender仅写入
     if (!readFromFile()) {
