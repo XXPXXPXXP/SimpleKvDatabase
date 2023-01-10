@@ -8,7 +8,7 @@
 #include "settings.h"
 #include <functional>
 
-void pipeWrite(int fd,const void * buf,uint32_t nBytes);
+void pipeWrite(int fd, const void *buf, uint32_t nBytes);
 
 void pipeHandle(int) {
     /*
@@ -122,7 +122,9 @@ void networkIO::start(int readerFd[2], int senderFd[2]) {
 
 void *networkIO::reader(int readerFd[2], int targetSockId) {
     /*
-     * description:
+     * info: 线程reader的工作函数，会被放入线程池的任务队列中
+     * description: 从socket数据流中读取数据
+     * return: 无
      */
     log(info, "reader:任务执行！");
     /* 从任务列表中取出任务 */
@@ -285,7 +287,7 @@ void networkIO::senderTaskerGetter(int *senderFd) {
                 break;
             }
             default:
-                log(error, "sender:未知的type！",static_cast<int>(type));
+                log(error, "sender:未知的type！", static_cast<int>(type));
                 break;
         }
     }
@@ -304,6 +306,10 @@ void networkIO::putResponse(bool status, int sockId) {
 }
 
 void networkIO::deleteResponse(bool status, int sockId) {
+    /*
+     * description: 用于发送deleteResponse返回给Client
+     * return: 该函数没有返回值
+     */
     bool result;
     result = sendHeader(sockId, 1, 4);
     result = result && sendField(sockId, &status, sizeof(bool), MSG_NOSIGNAL);
@@ -312,6 +318,10 @@ void networkIO::deleteResponse(bool status, int sockId) {
 }
 
 void networkIO::getResponse(uint32_t size, std::string targetValue, int sockId) {
+    /*
+     * description: 用于发送getResponse返回给Client
+     * return: 该函数没有返回值
+     */
     bool result;
     result = sendHeader(sockId, sizeof(uint32_t) + targetValue.size(), 5);
     result = result && sendField(sockId, &size, sizeof(size), MSG_NOSIGNAL);
@@ -368,7 +378,7 @@ bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type) {
 void pipeReader(int fd, void *buf, uint32_t bytes) {
     uint32_t readSize = 0;
     while (readSize < bytes) {
-        long temp = read(fd, reinterpret_cast<char *>(buf) + readSize, bytes-readSize);
+        long temp = read(fd, reinterpret_cast<char *>(buf) + readSize, bytes - readSize);
         if (temp == -1) {
             log(error, "pipeReader:出现了读取错误！");
             continue;

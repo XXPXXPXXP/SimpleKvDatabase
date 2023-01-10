@@ -11,6 +11,8 @@
 #include <functional>
 void pipeReader(int fd, void *buf, uint32_t bytes);
 database *globalSignalPointer = nullptr;
+/* 在声明任何指针的时候，一定要用空指针进行初始化！
+ * 之前一个离谱的bug就是这个指针没有赋值导致的！🤬*/
 
 void database::start(int readerFd[2], int senderFd[2]) {
     /*
@@ -30,6 +32,11 @@ void database::start(int readerFd[2], int senderFd[2]) {
 }
 
 bool database::putValue(const std::string &targetKey, const std::string &targetValue) noexcept(false) {
+    /*
+     * description: 用于向数据库中添加键值对
+     * return: 是否成功
+     * more information: 声明noexcept(false)的原因是该函数可能会抛出Out-of-range异常
+     */
     try {
         std::string value = datas.at(targetKey); //判断要写入的数据是否已经存在
         if (value == targetValue) {
@@ -40,7 +47,7 @@ bool database::putValue(const std::string &targetKey, const std::string &targetV
             datas.at(targetKey) = targetValue;
             databaseLocker.unlock();
         }
-    } catch (std::exception &e) {//若不存在则会出现out_of_range错误并被捕获，然后再向容器中写入数据
+    } catch (std::exception &e) {   //若数据不存在则会出现out_of_range错误并被捕获，然后再向容器中写入数据
         databaseLocker.lock();
         datas.emplace(targetKey, targetValue);
         databaseLocker.unlock();
@@ -67,6 +74,10 @@ std::string database::getValue(const std::string &targetKey)
 }
 
 bool database::readFromFile() {
+    /*
+     * description: 用于从文件中读取数据
+     * return: 是否成功
+     */
     std::ifstream file;
     file.open("datas.dat", std::ios_base::in | std::ios_base::binary);
     if (!file.is_open())
@@ -100,11 +111,16 @@ bool database::readFromFile() {
     return true;
 }
 
-bool database::deleteValue(const std::string &t_key) {
+bool database::deleteValue(const std::string& t_key) {
+    /*
+     * description: 从数据库中删除数据
+     * return: 是否成功
+     */
     try {
         databaseLocker.lock();
         datas.erase(t_key);
         databaseLocker.unlock();
+        /* 加锁用于解决一些同步读取的竞态条件 */
     } catch (std::exception &e) {
         log(warning, "待删除的数据不存在！");
         return false;
@@ -113,7 +129,7 @@ bool database::deleteValue(const std::string &t_key) {
 }
 
 bool database::saveToFile() {
-    //这个函数理论上只会在退出的时候被调用
+    //这个函数理论上只会在退出的时候被调用一次
     log(info, "database:开始保存数据...");
     uint32_t size;
     std::ofstream file;
@@ -122,8 +138,6 @@ bool database::saveToFile() {
         log(error, "文件保存失败！");
         return false;
     }
-    log(info, "文件已打开！");
-    //log(info, "待保存的数据大小:", (int) datas.size());
     for (auto &data: datas) {
         std::string targetKey = data.first, targetValue = data.second;
         size = targetKey.size();

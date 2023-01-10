@@ -26,7 +26,7 @@ public:
 
     std::string getValue(const std::string &targetKey);
 
-    bool deleteValue(const std::string &t_key);
+    bool deleteValue(const std::string& t_key);
 
     bool saveToFile();
 
@@ -34,7 +34,7 @@ public:
 
     [[noreturn]] void taskSync(int readerFd[2], int senderFd[2]);
 
-    void putResponse(const std::string targetKey, const std::string targetValue, int sockID, int senderFd[2]);
+    void putResponse(std::string targetKey, std::string targetValue, int sockID, int senderFd[2]);
 
     void deleteResponse(std::string targetKey, int sockID, int senderFd[2]);
 

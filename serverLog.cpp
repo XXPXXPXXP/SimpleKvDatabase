@@ -5,7 +5,10 @@
 #include "settings.h"
 
 enum log_level global_log_level = GLOBAL_LOG_LEVEL;
-
+/*
+ * description: 以下函数均是用来日志输出的
+ * return: 无
+ */
 void log(enum log_level level, const std::string &context) {
     if (level >= global_log_level) {
         std::cout << (level == info ? INFO_COLOR : (level == warning ? WARNING_COLOR : ERROR_COLOR));
