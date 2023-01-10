@@ -20,11 +20,13 @@ public:
     [[noreturn]] void start();
 
     [[noreturn]] void management();
+
+    [[noreturn]] void restart();
 };
 
-init *p_master;
+init *pInit;
 
-class init Master;
+class init init;
 
 void sigHandler(int);
 

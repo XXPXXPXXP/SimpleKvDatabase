@@ -11,8 +11,8 @@
 
 int main() {
     log(info, "starting...");
-    p_master = &Master;
-    Master.start();
+    pInit = &init;
+    init.start();
     //理论上不会再往下执行
     log(error, "Unknown Reason for main exiting!");
     return 0;
@@ -20,7 +20,7 @@ int main() {
 
 void sigHandler(int singleNum) {
     log(info, "主进程已收到信号", singleNum);
-    p_master->exit();
+    pInit->exit();
 }
 
 void init::exit() {
@@ -45,6 +45,10 @@ void init::exit() {
     pid_t processorID;
     processorID = fork();
     if (processorID == 0) {
+        /*
+         * 进程1: 数据进程
+         * description: 用于处理数据IO和文件IO
+         */
         database database;
         database.start(readerFd, senderFd);//正常情况下该函数将不会返回
         log(error, "databaseMain:数据进程异常退出！");
@@ -53,6 +57,10 @@ void init::exit() {
     pid.emplace_back(processorID);
     processorID = fork();
     if (processorID == 0) {
+        /*
+         * 进程2: 网络进程
+         * description: 用于处理网络IO
+         */
         networkIO networkIO;
         networkIO.start(readerFd, senderFd); //正常情况下该函数不会返回
         log(error, "networkIO:网络IO进程异常退出！");
@@ -76,10 +84,30 @@ void init::exit() {
 }
 
 [[noreturn]] void init::management() {
-    while (true);
-    //waitpid(pid.at(0), nullptr,0);
+    auto * status = new int;
+    while (true){
+        waitpid(-1,status,0);
+        if (WIFEXITED(* status))//进程异常退出
+        {
+            log(error,"子进程异常退出！");
+            restart();
+        }
+        else
+            break;
+    }
     exit();
     ::exit(-1);
+}
+
+void init::restart() {
+    log(warning,"init: 进程自动重启开始...");
+    for (int i = 0; i < pid.size(); ++i) {
+        kill(pid.at(i), SIGTERM);
+        waitpid(pid.at(i), nullptr, 1);
+        log(info, "进程已停止", i);
+    }
+    log(warning,"init:开始重启!");
+    pInit->start();
 }
 
 
