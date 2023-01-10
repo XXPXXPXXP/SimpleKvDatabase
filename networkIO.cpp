@@ -21,8 +21,8 @@ int networkIO::init(short port) {
         return -1;
     }
     /* 创建基本的socket */
-    int opt_code = 1;
-    if (setsockopt(listenSockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &opt_code, sizeof(opt_code))) {
+    int optCode = 1;
+    if (setsockopt(listenSockId, SOL_SOCKET, SO_REUSEADDR, (const void *) &optCode, sizeof(optCode))) {
         log(error, "端口复用设置失败！");
         close(listenSockId);
         exit(-1);
@@ -66,7 +66,7 @@ int networkIO::init(short port) {
 
 [[noreturn]] void networkIO::accepts(networkIO *_this, int readerFd[2]) {
     log(info, "accepts: 工作线程创建！");
-    int size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
+    uint32_t size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
         log(info, "accepts:开始阻塞");
         int num = epoll_wait(_this->listeningEpoll, _this->listenEpollEvent, size, -1);
@@ -110,13 +110,13 @@ void networkIO::start(int readerFd[2], int senderFd[2]) {
 void *networkIO::reader(int readerFd[2], int targetSockId) {
     log(info, "reader:任务执行！");
     /* 从任务列表中取出任务 */
-    uint32_t magic_number;
-    while (read(targetSockId, (char *) &magic_number, 4) > 0)//判断socket是否结束
+    uint32_t magicNumber;
+    while (read(targetSockId, (char *) &magicNumber, 4) > 0)//判断socket是否结束
     {
         log(info, "线程读取sock成功", targetSockId);
         //读取header数据
         uint32_t size = 0, type = 0, rubbish = 0;
-        if (magic_number != 1234) {
+        if (magicNumber != 1234) {
             log(warning, "MagicNumber不匹配！", targetSockId);
             continue;
         }
@@ -139,13 +139,13 @@ void *networkIO::reader(int readerFd[2], int targetSockId) {
             {
                 log(info, "收到put请求", targetSockId);
                 uint32_t keySize, valueSize;
-                std::string target_key, target_value;
+                std::string targetKey, targetValue;
                 if (read(targetSockId, &keySize, 4) < 0) {
                     log(error, "body:key_size读取失败！", targetSockId);
                     continue;
                 }
-                target_key.resize(keySize);
-                if (read(targetSockId, const_cast<char *>(target_key.data()), keySize) < 0) {
+                targetKey.resize(keySize);
+                if (read(targetSockId, const_cast<char *>(targetKey.data()), keySize) < 0) {
                     log(error, "body:key读取失败！", targetSockId);
                     continue;
                 }
@@ -153,8 +153,8 @@ void *networkIO::reader(int readerFd[2], int targetSockId) {
                     log(error, "body:value_size读取失败!", targetSockId);
                     continue;
                 }
-                target_value.resize(valueSize);
-                if (read(targetSockId, const_cast<char *>(target_value.data()), valueSize) < 0) {
+                targetValue.resize(valueSize);
+                if (read(targetSockId, const_cast<char *>(targetValue.data()), valueSize) < 0) {
                     log(error, "body:value读取失败!", targetSockId);
                     continue;
                 }
@@ -162,9 +162,9 @@ void *networkIO::reader(int readerFd[2], int targetSockId) {
                 pipeReadLocker.lock();
                 write(readerFd[1], &type, 4);//将请求发往数据进程
                 write(readerFd[1], &keySize, 4);
-                write(readerFd[1], const_cast<char *>(target_key.data()), keySize);
+                write(readerFd[1], const_cast<char *>(targetKey.data()), keySize);
                 write(readerFd[1], &valueSize, 4);
-                write(readerFd[1], const_cast<char *>(target_value.data()), valueSize);
+                write(readerFd[1], const_cast<char *>(targetValue.data()), valueSize);
                 write(readerFd[1], &targetSockId, sizeof(int));
                 pipeReadLocker.unlock();
                 break;
@@ -200,12 +200,12 @@ void *networkIO::reader(int readerFd[2], int targetSockId) {
                     continue;
                 }
                 key.resize(keySize);
-                long real_size = read(targetSockId, const_cast<char *>(key.data()), keySize);
-                if (real_size < 0) {
+                long realSize = read(targetSockId, const_cast<char *>(key.data()), keySize);
+                if (realSize < 0) {
                     log(error, "读取Key出现错误!", targetSockId);
                     key.clear();
                     continue;
-                } else if (real_size != keySize) {
+                } else if (realSize != keySize) {
                     log(error, "读取到的Key大小异常!", targetSockId);
                     key.clear();
                     continue;
@@ -238,81 +238,70 @@ void networkIO::senderTaskerGetter(int *senderFd) {
      */
     log(info, "sender:任务获取开始!");
     while (true) {
-        int sockID;
+        int sockId;
         uint32_t type;
         /* 从管道读取任务目前是单线程，因此可以不用加锁 */
-        if (read(senderFd[0], &type, 4) != 4) {
-            log(error, "sender:管道读取错误!");
-            continue;
-        }
+        pipeReader(senderFd[0], &type, 4);
         switch (type) {
             case 3://put
             {
-                bool status, readResult;
-                readResult = read(senderFd[0], &status, sizeof(bool)) == sizeof(bool);
-                readResult = readResult && read(senderFd[0], &sockID, 4) == 4;
-                if (!readResult) {
-                    log(error, "sender:管道读取错误！");
-                    continue;
-                }
-                networkIoThreads.addTasks(std::bind(&networkIO::putResponse, this, status, sockID));
+                bool status = true;
+                pipeReader(senderFd[0], &status, sizeof(bool));
+                pipeReader(senderFd[0], &sockId, 4);
+                networkIoThreads.addTasks(std::bind(&networkIO::putResponse, this, status, sockId));
                 break;
             }
             case 4: {
-                bool status, readResult;
-                readResult = read(senderFd[0], &status, sizeof(bool)) == sizeof(bool);
-                readResult = readResult && read(senderFd[0], &sockID, sizeof(int)) == sizeof(int);
-                if (!readResult) {
-                    log(error, "sender:管道读取错误！");
-                    continue;
-                }
-                networkIoThreads.addTasks(std::bind(&networkIO::deleteResponse, this, status, sockID));
+                bool status;
+                pipeReader(senderFd[0], &status, sizeof(bool));
+                pipeReader(senderFd[0], &sockId, sizeof(int));
+                networkIoThreads.addTasks(std::bind(&networkIO::deleteResponse, this, status, sockId));
                 break;
             }
             case 5: {
-                bool readResult;
                 uint32_t valueSize;
                 std::string value;
-                readResult = read(senderFd[0], &valueSize, 4) == 4;
+                pipeReader(senderFd[0], &valueSize, 4);
                 value.resize(valueSize);
-                readResult = readResult && read(senderFd[0], const_cast<char *>(value.data()), valueSize) == valueSize;
-                readResult = readResult && read(senderFd[0], &sockID, sizeof(int)) == sizeof(int);
-                networkIoThreads.addTasks(std::bind(&networkIO::getResponse, this, valueSize, value, sockID));
+                pipeReader(senderFd[0], const_cast<char *>(value.data()), valueSize);
+                pipeReader(senderFd[0], &sockId, sizeof(int));
+                networkIoThreads.addTasks(std::bind(&networkIO::getResponse, this, valueSize, value, sockId));
                 break;
             }
             default:
                 log(error, "sender:未知的type！");
+                break;
         }
     }
 }
 
-void networkIO::putResponse(bool status, int sockID) {
+void networkIO::putResponse(bool status, int sockId) {
     /*
      * description: 用于发送putResponse返回给Client
      * return: 该函数没有返回值
      */
     bool result;
-    result = sendHeader(sockID, 1, 3);
-    result = result && sendField(sockID, &status, sizeof(bool), MSG_NOSIGNAL);
+    result = sendHeader(sockId, 1, 3);
+    result = result && sendField(sockId, &status, sizeof(bool), MSG_NOSIGNAL);
     if (!result)
         log(error, "sender:putResponse发送失败！");
 }
 
-void networkIO::deleteResponse(bool status, int sockID) {
+void networkIO::deleteResponse(bool status, int sockId) {
     bool result;
-    result = sendHeader(sockID,1,4);
-    result = result && sendField(sockID,&status, sizeof(bool),MSG_NOSIGNAL);
+    result = sendHeader(sockId, 1, 4);
+    result = result && sendField(sockId, &status, sizeof(bool), MSG_NOSIGNAL);
     if (!result)
-        log(error,"sender:deleteResponse发送失败！");
+        log(error, "sender:deleteResponse发送失败！");
 }
 
-void networkIO::getResponse(uint32_t size, std::string &targetValue, int sockID) {
+void networkIO::getResponse(uint32_t size, std::string &targetValue, int sockId) {
     bool result;
-    result = sendHeader(sockID, sizeof(uint32_t)+targetValue.size(),5);
-    result = result && sendField(sockID,&size, sizeof(size),MSG_NOSIGNAL);
-    result = result && sendField(sockID,const_cast<char *>(targetValue.data()),size,MSG_NOSIGNAL);
+    result = sendHeader(sockId, sizeof(uint32_t) + targetValue.size(), 5);
+    result = result && sendField(sockId, &size, sizeof(size), MSG_NOSIGNAL);
+    result = result && sendField(sockId, const_cast<char *>(targetValue.data()), size, MSG_NOSIGNAL);
     if (!result)
-        log(error,"sender:getResponse发送失败！");
+        log(error, "sender:getResponse发送失败！");
 }
 
 bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra)
@@ -324,8 +313,9 @@ bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra)
     if (send(target_sock_id, data_to_send, size, extra) != size) {
         log(error, "发送body失败！");
         return false;
-    } else
-        return true;
+    }
+
+    return true;
 }
 
 
@@ -357,6 +347,18 @@ bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type) {
     result = result && sendField(target_sock_id, &type, 4, MSG_NOSIGNAL);
     result = result && sendField(target_sock_id, &padding, 4, MSG_NOSIGNAL);
     return result;
+}
+
+void pipeReader(int fd, void *buf, uint32_t bytes) {
+    uint32_t readSize = 0;
+    while (readSize != bytes) {
+        uint32_t temp = read(fd, reinterpret_cast<char *>(buf) + readSize, bytes);
+        if (temp == static_cast<uint32_t>(-1)) {
+            log(error, "pipeReader:出现了读取错误！");
+            continue;
+        }
+        readSize += temp;
+    }
 }
 
 #pragma clang diagnostic pop

@@ -18,6 +18,7 @@
 #include <cstring>
 /* 为了能够使用memset */
 #include <string>
+
 class networkIO {
 private:
     int listenSockId = -1;
@@ -31,21 +32,34 @@ private:
     std::mutex pipeSendLocker;
 public:
     int init(short port);
+
     /* 默认端口采用1433，也就是SQL的默认端口 */
     [[noreturn]] static void accepts(networkIO *_this, int readerFd[2]);
+
     void start(int readerFd[2], int senderFd[2]);
+
     ~networkIO() {
         log(warning, "server触发了回收!");
         stop();
     }
 
     void stop() const;
+
     [[noreturn]] void senderTaskerGetter(int *senderFd);
+
     void *reader(int *readerFd, int targetSockId);
-    void putResponse(bool status,int sockID);
-    void deleteResponse(bool status, int sockID);
-    void getResponse(uint32_t size,std::string & targetValue, int sockID);
+
+    void putResponse(bool status, int sockId);
+
+    void deleteResponse(bool status, int sockId);
+
+    void getResponse(uint32_t size, std::string &targetValue, int sockId);
 };
+
 bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra);
+
 bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type);
+
+void pipeReader(int fd, void *buf, uint32_t bytes);
+
 #endif //FINAL_PROJECT_NETWORKIO_H

@@ -9,7 +9,7 @@
 #include <csignal>
 #include <unistd.h>
 #include <functional>
-
+void pipeReader(int fd, void *buf, uint32_t bytes);
 database *globalSignalPointer;
 
 void database::start(int readerFd[2], int senderFd[2]) {
@@ -118,7 +118,7 @@ bool database::saveToFile() {
         log(error, "文件保存失败！");
         return false;
     }
-    log(info,"文件已打开！");
+    log(info, "文件已打开！");
     //log(info, "待保存的数据大小:", (int) datas.size());
     for (auto &data: datas) {
         std::string targetKey = data.first, targetValue = data.second;
@@ -133,7 +133,7 @@ bool database::saveToFile() {
     size = 0;
     file.write(reinterpret_cast<char *>(&size), 4);
     file.close();
-    log(info,"数据保存完成!");
+    log(info, "数据保存完成!");
     return true;
 }
 
@@ -148,26 +148,19 @@ void database::taskSync(int *readerFd, int *senderFd) {
     uint32_t type = 0;
     int sockID = -1;
     while (true) {
-        if (read(readerFd[0], &type, sizeof(int)) != sizeof(int)) {
-            log(warning, "database:从管道读取数据异常！");
-            continue;
-        }
+        pipeReader(readerFd[0], &type, sizeof(int));
         switch (type) {
             case 0://put
             {
-                bool readResult = true;
                 uint32_t keySize, valueSize = 0;
                 std::string targetKey, targetValue;
-                readResult = read(readerFd[0], &keySize, 4) == 4;
+                pipeReader(readerFd[0], &keySize, 4) ;
                 targetKey.resize(keySize);
-                readResult = readResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
-                readResult = readResult && read(readerFd[0], &valueSize, 4) == 4;
+                pipeReader(readerFd[0], const_cast<char *>(targetKey.data()), keySize);
+                pipeReader(readerFd[0], &valueSize, 4);
                 targetValue.resize(valueSize);
-                readResult = readResult && read(readerFd[0], const_cast<char *>(targetValue.data()), valueSize) == valueSize;
-                readResult = readResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
-                if (!readResult) {
-                    log(error, "database：管道读取异常！");
-                }
+                pipeReader(readerFd[0], const_cast<char *>(targetValue.data()), valueSize);
+                pipeReader(readerFd[0], &sockID, sizeof(int));
                 log(info, "database:收到put请求！");
                 databaseThreadPool.addTasks(
                         std::bind(&database::putResponse, this, targetKey, targetValue, sockID, senderFd));
@@ -177,13 +170,10 @@ void database::taskSync(int *readerFd, int *senderFd) {
             {
                 uint32_t keySize;
                 std::string targetKey;
-                bool pipeResult = read(readerFd[0], &keySize, 4) == 4;
+                pipeReader(readerFd[0], &keySize, 4);
                 targetKey.resize(keySize);
-                pipeResult = pipeResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
-                pipeResult = pipeResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
-                if (!pipeResult) {
-                    log(error, "database: 管道read出现错误！");
-                }
+                pipeReader(readerFd[0], const_cast<char *>(targetKey.data()), keySize);
+                pipeReader(readerFd[0], &sockID, sizeof(int));
                 log(info, "database:收到delete请求!key=" + targetKey);
                 databaseThreadPool.addTasks(std::bind(&database::deleteResponse, this, targetKey, sockID, senderFd));
                 break;
@@ -191,13 +181,10 @@ void database::taskSync(int *readerFd, int *senderFd) {
             case 2: {
                 uint32_t keySize;
                 std::string targetKey;
-                bool pipeResult = read(readerFd[0], &keySize, 4) == 4;
+                pipeReader(readerFd[0], &keySize, 4);
                 targetKey.resize(keySize);
-                pipeResult = pipeResult && read(readerFd[0], const_cast<char *>(targetKey.data()), keySize) == keySize;
-                pipeResult = pipeResult && read(readerFd[0], &sockID, sizeof(int)) == sizeof(int);
-                if (!pipeResult) {
-                    log(error, "database: reader管道出现异常！");
-                }
+                pipeReader(readerFd[0], const_cast<char *>(targetKey.data()), keySize);
+                pipeReader(readerFd[0], &sockID, sizeof(int));
                 log(info, "database:处理Get请求:key=" + targetKey);
                 databaseThreadPool.addTasks(std::bind(&database::getResponse, this, targetKey, sockID, senderFd));
                 break;

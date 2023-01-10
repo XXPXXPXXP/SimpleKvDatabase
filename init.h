@@ -4,21 +4,28 @@
 
 #ifndef FINAL_PROJECT_INIT_H
 #define FINAL_PROJECT_INIT_H
+
 #include <vector>
 #include <thread>
 #include "database.h"
 #include "settings.h"
 #include "networkIO.h"
+
 class init {
 private:
     std::vector<pid_t> pid;
 public:
     void exit();
+
     [[noreturn]] void start();
 
     [[noreturn]] void management();
 };
-init * p_master;
+
+init *p_master;
+
 class init Master;
+
 void sigHandler(int);
+
 #endif//FINAL_PROJECT_INIT_H

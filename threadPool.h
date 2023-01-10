@@ -24,8 +24,8 @@ class threadPool {
 public:
     /* 提交一个任务
      * 调用.get()获取返回值会等待任务执行完,获取返回值
-     * 一种是使用   bind： .addTasks(std::bind(&Dog::sayHello, &dog));
-     * 一种是用   mem_fn： .addTasks(std::mem_fn(&Dog::sayHello), this)
+     * bind： .addTasks(std::bind(&Dog::sayHello, &dog));
+     * mem_fn： .addTasks(std::mem_fn(&Dog::sayHello), this)
      */
     template<class Func, class... Args>
     /* 使用可变参数模版类 */
@@ -78,7 +78,7 @@ public:
             if (thread.joinable())
                 thread.join(); // 等待全部任务结束
         }
-        log(warning,"线程池已手动停止！");
+        log(warning, "线程池已手动停止！");
     }
 
 private:

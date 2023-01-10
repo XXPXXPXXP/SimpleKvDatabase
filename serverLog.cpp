@@ -3,16 +3,18 @@
 //
 #include "serverLog.h"
 #include "settings.h"
+
 enum log_level global_log_level = GLOBAL_LOG_LEVEL;
 
 void log(enum log_level level, const std::string &context) {
     if (level >= global_log_level) {
         std::cout << (level == info ? INFO_COLOR : (level == warning ? WARNING_COLOR : ERROR_COLOR));
         std::cout << (level == info ? "[I] " : (level == warning ? "[W] " : "[E] "));
-        std::cout << context << COLOR_END <<std::endl;
+        std::cout << context << COLOR_END << std::endl;
     }
 }
-void log(enum log_level level, const std::string &context,int id) {
+
+void log(enum log_level level, const std::string &context, int id) {
     if (level >= global_log_level) {
         std::cout << (level == info ? INFO_COLOR : (level == warning ? WARNING_COLOR : ERROR_COLOR));
         std::cout << (level == info ? "[I] " : (level == warning ? "[W] " : "[E] "));
