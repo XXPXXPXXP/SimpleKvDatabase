@@ -34,7 +34,7 @@ public:
 
     [[noreturn]] void taskSync(int readerFd[2], int senderFd[2]);
 
-    void putResponse(std::string targetKey, std::string targetValue, int sockID, int senderFd[2]);
+    void putResponse(const std::string& targetKey, const std::string& targetValue, int sockID, int senderFd[2]);
 
     void deleteResponse(std::string &targetKey, int sockID, int senderFd[2]);
 
@@ -48,5 +48,5 @@ public:
 
     static void sigHelder(int);
 };
-
+void pipeWrite(int fd,const void * buf,uint32_t n);
 #endif //FINAL_PROJECT_DATABASE_H

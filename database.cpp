@@ -191,72 +191,72 @@ void database::taskSync(int *readerFd, int *senderFd) {
             }
             default: {
                 log(error, "database:错误的type！");
-                continue;
+                break;
             }
         }//从管道中解析任务并且添加对应的任务到线程池
     }
 }
 
-void database::putResponse(std::string targetKey, std::string targetValue, int sockID, int senderFd[2]) {
+void database::putResponse(const std::string& targetKey, const std::string& targetValue, int sockID, int senderFd[2]) {
     log(info, "database:子线程开始处理");
-    uint32_t type = 3;
+    const uint32_t type = 3;
     bool result = putValue(targetKey, targetValue);
     pipeLocker.lock();
-    bool pipeWrite = write(senderFd[1], &type, 4);
-    pipeWrite = pipeWrite && write(senderFd[1], &result, sizeof(bool)) == sizeof(bool);
-    pipeWrite = pipeWrite && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
-    if (!pipeWrite) {
-        log(error, "管道发送错误！");
-    }
+    pipeWrite(senderFd[1], &type, 4);
+    pipeWrite(senderFd[1], &result, sizeof(bool));
+    pipeWrite(senderFd[1], &sockID, sizeof(int));
     pipeLocker.unlock();
 }
 
 void database::deleteResponse(std::string &targetKey, int sockID, int senderFd[2]) {
-    uint32_t type = 4;
+    const uint32_t type = 4;
     bool result = deleteValue(targetKey);
     pipeLocker.lock();
-    bool pipeResult = write(senderFd[1], &type, 4) == 4;
-    pipeResult = pipeResult && write(senderFd[1], &result, sizeof(bool)) == sizeof(bool);
-    pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
+    pipeWrite(senderFd[1], &type, 4);
+    pipeWrite(senderFd[1], &result, sizeof(bool));
+    pipeWrite(senderFd[1], &sockID, sizeof(int));
     pipeLocker.unlock();
-    if (!pipeResult) {
-        log(error, "database: 管道read出现错误！");
-    }
 }
 
 void database::getResponse(std::string &targetKey, int sockID, int senderFd[2]) {
-    uint32_t type = 5;
+    const uint32_t type = 5;
     std::string value = getValue(targetKey);
-    bool pipeResult;
+
     if (value.empty()) {
         log(error, "查找键值对失败");
         uint32_t valueSize = 4;
         value = "null";
         pipeLocker.lock();
-        pipeResult = write(senderFd[1], &type, 4) == 4;
-        pipeResult = pipeResult && write(senderFd[1], &valueSize, 4) == 4;
-        pipeResult =
-                pipeResult && write(senderFd[1], const_cast<char *>(value.data()), valueSize) == valueSize;
-        pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
+        pipeWrite(senderFd[1], &type, 4);
+        pipeWrite(senderFd[1], &valueSize, 4);
+        pipeWrite(senderFd[1], const_cast<char *>(value.data()), valueSize);
+        pipeWrite(senderFd[1], &sockID, sizeof(int));
         pipeLocker.unlock();
-        if (!pipeResult) {
-            log(error, "database: sender管道出现异常！");
-        }
         log(info, "database:Get请求完成处理，已经放回管道");
     } else {
         uint32_t valueSize = value.size();
         log(info, "database:查找键值对成功！value=" + value);
-        pipeResult = write(senderFd[1], &type, 4) == 4;
-        pipeResult = pipeResult && write(senderFd[1], &valueSize, 4) == 4;
-        pipeResult =
-                pipeResult && write(senderFd[1], const_cast<char *>(value.data()), valueSize) == valueSize;
-        pipeResult = pipeResult && write(senderFd[1], &sockID, sizeof(int)) == sizeof(int);
-        log(info, "database:数据写入管道成功");
-        if (!pipeResult) {
-            log(error, "database: sender管道出现异常！");
-        }
+        pipeWrite(senderFd[1], &type, 4);
+        pipeWrite(senderFd[1], &valueSize, 4);
+        pipeWrite(senderFd[1], const_cast<char *>(value.data()), valueSize);
+        pipeWrite(senderFd[1], &sockID, sizeof(int));
+        log(info, "database:数据写入管道完成");
     }
 }
 
+
+void pipeWrite(int fd, const void *buf, uint32_t n) {
+    uint32_t writeSize = 0;
+    while (writeSize < n)
+    {
+        int temp = write(fd,reinterpret_cast<const char *>(buf)+writeSize,n-writeSize);
+        if (temp==-1)
+        {
+            log(error,"pipeWrite:发生了管道写入错误",errno);
+            continue;
+        }
+        writeSize += temp;
+    }
+}
 
 #pragma clang diagnostic pop

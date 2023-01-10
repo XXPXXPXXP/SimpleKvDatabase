@@ -4,10 +4,11 @@
 // Created by 神奇bug在哪里 on 2022/12/16.
 //
 
-
 #include "networkIO.h"
 #include "settings.h"
 #include <functional>
+
+void pipeWrite(int fd,const void * buf,uint32_t n);
 
 void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
@@ -69,7 +70,7 @@ int networkIO::init(short port) {
     uint32_t size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
         log(info, "accepts:开始阻塞");
-        int num = epoll_wait(_this->listeningEpoll, _this->listenEpollEvent, size, -1);
+        int num = epoll_wait(_this->listeningEpoll, _this->listenEpollEvent, static_cast<int>(size), -1);
         if (num < 1) {
             log(error, "epoll队列异常！");
             continue;
@@ -84,7 +85,7 @@ int networkIO::init(short port) {
         timeOut.tv_sec = 3;
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接一直不释放 */
-        //setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
+        setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
         /* 下面开始处理交由reader处理 */
         _this->networkIoThreads.addTasks(std::bind(&networkIO::reader, _this, readerFd, targetSockId));
     }
@@ -160,12 +161,12 @@ void *networkIO::reader(int readerFd[2], int targetSockId) {
                 }
                 //所有数据完成读取
                 pipeReadLocker.lock();
-                write(readerFd[1], &type, 4);//将请求发往数据进程
-                write(readerFd[1], &keySize, 4);
-                write(readerFd[1], const_cast<char *>(targetKey.data()), keySize);
-                write(readerFd[1], &valueSize, 4);
-                write(readerFd[1], const_cast<char *>(targetValue.data()), valueSize);
-                write(readerFd[1], &targetSockId, sizeof(int));
+                pipeWrite(readerFd[1], &type, 4);//将请求发往数据进程
+                pipeWrite(readerFd[1], &keySize, 4);
+                pipeWrite(readerFd[1], const_cast<char *>(targetKey.data()), keySize);
+                pipeWrite(readerFd[1], &valueSize, 4);
+                pipeWrite(readerFd[1], const_cast<char *>(targetValue.data()), valueSize);
+                pipeWrite(readerFd[1], &targetSockId, sizeof(int));
                 pipeReadLocker.unlock();
                 break;
             }
@@ -183,10 +184,10 @@ void *networkIO::reader(int readerFd[2], int targetSockId) {
                     continue;
                 }
                 pipeReadLocker.lock();
-                write(readerFd[1], &type, 4);
-                write(readerFd[1], &keySize, 4);
-                write(readerFd[1], const_cast<char *>(targetKey.data()), keySize);
-                write(readerFd[1], &targetSockId, sizeof(int));
+                pipeWrite(readerFd[1], &type, 4);
+                pipeWrite(readerFd[1], &keySize, 4);
+                pipeWrite(readerFd[1], const_cast<char *>(targetKey.data()), keySize);
+                pipeWrite(readerFd[1], &targetSockId, sizeof(int));
                 pipeReadLocker.unlock();
                 break;
             }
@@ -212,10 +213,10 @@ void *networkIO::reader(int readerFd[2], int targetSockId) {
                 }
                 /* 下面向数据线程发送数据 */
                 pipeReadLocker.lock();
-                write(readerFd[1], &type, 4);
-                write(readerFd[1], &keySize, 4);
-                write(readerFd[1], const_cast<char *>(key.data()), keySize);
-                write(readerFd[1], &targetSockId, sizeof(int));
+                pipeWrite(readerFd[1], &type, 4);
+                pipeWrite(readerFd[1], &keySize, 4);
+                pipeWrite(readerFd[1], const_cast<char *>(key.data()), keySize);
+                pipeWrite(readerFd[1], &targetSockId, sizeof(int));
                 pipeReadLocker.unlock();
                 break;
             }
@@ -269,7 +270,7 @@ void networkIO::senderTaskerGetter(int *senderFd) {
                 break;
             }
             default:
-                log(error, "sender:未知的type！");
+                log(error, "sender:未知的type！",static_cast<int>(type));
                 break;
         }
     }
@@ -351,9 +352,9 @@ bool sendHeader(int target_sock_id, uint32_t full_size, uint32_t type) {
 
 void pipeReader(int fd, void *buf, uint32_t bytes) {
     uint32_t readSize = 0;
-    while (readSize != bytes) {
-        uint32_t temp = read(fd, reinterpret_cast<char *>(buf) + readSize, bytes);
-        if (temp == static_cast<uint32_t>(-1)) {
+    while (readSize < bytes) {
+        long temp = read(fd, reinterpret_cast<char *>(buf) + readSize, bytes-readSize);
+        if (temp == -1) {
             log(error, "pipeReader:出现了读取错误！");
             continue;
         }
