@@ -2,7 +2,7 @@
 //  main.cpp
 //  Final_project
 //
-//  Created by 神奇bug在哪里 on 2022/12/14.
+//  Created by 神奇bug在哪里 on 2022/12/21.
 //
 
 #include "init.h"
@@ -20,11 +20,19 @@ int main() {
 }
 
 void sigHandler(int singleNum) {
+    /*
+     * description: 用于处理外部的退出信号
+     * return: 无
+     */
     log(info, "主进程已收到信号", singleNum);
     pInit->exit();
 }
 
 void init::exit() {
+    /*
+     * description: 主进程的退出函数，会回收所有的子进程
+     * return: 无，将会直接退出
+     */
     for (int i = 0; i < pid.size(); ++i) {
         kill(pid.at(i), SIGTERM);
         waitpid(pid.at(i), nullptr, 1);
@@ -37,6 +45,10 @@ void init::exit() {
 
 [[noreturn]] void init::start() {
     int readerFd[2], senderFd[2];
+    /*
+     * readerFd:用于读取线程和数据库之间的交互
+     * senderFd:用于发送线程和数据库之间的交互
+     */
     /* 下面开始创建管道 */
     if (pipe(readerFd) == -1 || pipe(senderFd) == -1) {
         log(error, "init: 管道出现错误！");
@@ -81,11 +93,20 @@ void init::exit() {
     signal(SIGKILL, sigHandler);
     signal(SIGQUIT, sigHandler);
     log(info, "主进程信号处理函数注册完成");
-    management();//父进程负责监听各子进程的异常退出情况
+    management();
+    /*
+     * 进程0: init进程
+     * description: 用于监控子进程的运行状态
+     * return: 无
+     */
 }
 
 [[noreturn]] void init::management() {
-    auto * status = new int;
+    /*
+     * description: init进程的主要管理部分
+     * return: 无
+     */
+    auto * status = new int; //用于接收子进程的退出状态
     while (true){
         waitpid(-1,status,0);
         if (WIFEXITED(* status))//进程异常退出
@@ -96,11 +117,15 @@ void init::exit() {
         else
             break;
     }
-    exit();
+    exit();//正常退出
     ::exit(-1);
 }
 
 void init::restart() {
+    /*
+     * description: 用于子进程的错误恢复
+     * return: 无
+     */
     log(warning,"init: 进程自动重启开始...");
     for (int i = 0; i < pid.size(); ++i) {
         kill(pid.at(i), SIGTERM);

@@ -11,11 +11,19 @@
 void pipeWrite(int fd,const void * buf,uint32_t nBytes);
 
 void pipeHandle(int) {
+    /*
+     * description: SIGPIPE的信号处理函数
+     * return: 无
+     */
     log(error, "socket发生了异常关闭！");
 }
 
 /* macOS/Linux 在初始化的时候比Windows少调用两个函数，不得不说，为什么这俩玩意总是在奇怪的地方搞差异化啊！！！ */
 int networkIO::init(short port) {
+    /*
+     * description: 用于初始化socket
+     * return: 绑定的sockID(用于监听的)
+     */
     listenSockId = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSockId == -1) {
         log(error, "socket reader error!");
@@ -66,6 +74,10 @@ int networkIO::init(short port) {
 }
 
 [[noreturn]] void networkIO::accepts(networkIO *_this, int readerFd[2]) {
+    /*
+     * description: accept线程的入口函数(固定线程数量)
+     * return: 不会返回
+     */
     log(info, "accepts: 工作线程创建！");
     uint32_t size = sizeof(listenEpollEvent) / sizeof(struct epoll_event);
     while (true) {
@@ -109,6 +121,9 @@ void networkIO::start(int readerFd[2], int senderFd[2]) {
 }
 
 void *networkIO::reader(int readerFd[2], int targetSockId) {
+    /*
+     * description:
+     */
     log(info, "reader:任务执行！");
     /* 从任务列表中取出任务 */
     uint32_t magicNumber;
