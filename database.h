@@ -48,5 +48,7 @@ public:
 
     static void sigHelder(int);
 };
-void pipeWrite(int fd,const void * buf,uint32_t nBytes);
+
+void pipeWrite(int fd, const void *buf, uint32_t nBytes);
+
 #endif //FINAL_PROJECT_DATABASE_H

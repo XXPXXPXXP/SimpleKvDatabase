@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <functional>
 void pipeReader(int fd, void *buf, uint32_t bytes);
-database *globalSignalPointer;
+database *globalSignalPointer = nullptr;
 
 void database::start(int readerFd[2], int senderFd[2]) {
     close(readerFd[1]);//reader仅读取

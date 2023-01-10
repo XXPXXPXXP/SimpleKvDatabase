@@ -85,7 +85,7 @@ int networkIO::init(short port) {
         timeOut.tv_sec = 3;
         timeOut.tv_usec = 0;
         /* 设置连接超时,防止连接一直不释放 */
-        setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
+        //setsockopt(targetSockId, SOL_SOCKET, SO_RCVTIMEO, &timeOut, sizeof(timeOut));
         /* 下面开始处理交由reader处理 */
         _this->networkIoThreads.addTasks(std::bind(&networkIO::reader, _this, readerFd, targetSockId));
     }
