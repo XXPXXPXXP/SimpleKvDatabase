@@ -245,11 +245,11 @@ void database::getResponse(std::string &targetKey, int sockID, int senderFd[2]) 
 }
 
 
-void pipeWrite(int fd, const void *buf, uint32_t n) {
+void pipeWrite(int fd, const void *buf, uint32_t nBytes) {
     uint32_t writeSize = 0;
-    while (writeSize < n)
+    while (writeSize < nBytes)
     {
-        int temp = write(fd,reinterpret_cast<const char *>(buf)+writeSize,n-writeSize);
+        long temp = write(fd,reinterpret_cast<const char *>(buf)+writeSize, nBytes - writeSize);
         if (temp==-1)
         {
             log(error,"pipeWrite:发生了管道写入错误",errno);

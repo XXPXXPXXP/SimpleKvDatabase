@@ -8,7 +8,7 @@
 #include "settings.h"
 #include <functional>
 
-void pipeWrite(int fd,const void * buf,uint32_t n);
+void pipeWrite(int fd,const void * buf,uint32_t nBytes);
 
 void pipeHandle(int) {
     log(error, "socket发生了异常关闭！");
