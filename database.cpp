@@ -197,7 +197,7 @@ void database::taskSync(int *readerFd, int *senderFd) {
     }
 }
 
-void database::putResponse(const std::string& targetKey, const std::string& targetValue, int sockID, int senderFd[2]) {
+void database::putResponse(const std::string targetKey, const std::string targetValue, int sockID, int senderFd[2]) {
     log(info, "database:子线程开始处理");
     const uint32_t type = 3;
     bool result = putValue(targetKey, targetValue);
@@ -208,7 +208,7 @@ void database::putResponse(const std::string& targetKey, const std::string& targ
     pipeLocker.unlock();
 }
 
-void database::deleteResponse(std::string &targetKey, int sockID, int senderFd[2]) {
+void database::deleteResponse(std::string targetKey, int sockID, int senderFd[2]) {
     const uint32_t type = 4;
     bool result = deleteValue(targetKey);
     pipeLocker.lock();
@@ -218,7 +218,7 @@ void database::deleteResponse(std::string &targetKey, int sockID, int senderFd[2
     pipeLocker.unlock();
 }
 
-void database::getResponse(std::string &targetKey, int sockID, int senderFd[2]) {
+void database::getResponse(std::string targetKey, int sockID, int senderFd[2]) {
     const uint32_t type = 5;
     std::string value = getValue(targetKey);
 
@@ -236,10 +236,12 @@ void database::getResponse(std::string &targetKey, int sockID, int senderFd[2]) 
     } else {
         uint32_t valueSize = value.size();
         log(info, "database:查找键值对成功！value=" + value);
+        pipeLocker.lock();
         pipeWrite(senderFd[1], &type, 4);
         pipeWrite(senderFd[1], &valueSize, 4);
         pipeWrite(senderFd[1], const_cast<char *>(value.data()), valueSize);
         pipeWrite(senderFd[1], &sockID, sizeof(int));
+        pipeLocker.unlock();
         log(info, "database:数据写入管道完成");
     }
 }

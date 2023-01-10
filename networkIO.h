@@ -53,7 +53,7 @@ public:
 
     void deleteResponse(bool status, int sockId);
 
-    void getResponse(uint32_t size, std::string &targetValue, int sockId);
+    void getResponse(uint32_t size, std::string targetValue, int sockId);
 };
 
 bool sendField(int target_sock_id, void *data_to_send, uint32_t size, int extra);

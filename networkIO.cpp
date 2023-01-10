@@ -296,7 +296,7 @@ void networkIO::deleteResponse(bool status, int sockId) {
         log(error, "sender:deleteResponse发送失败！");
 }
 
-void networkIO::getResponse(uint32_t size, std::string &targetValue, int sockId) {
+void networkIO::getResponse(uint32_t size, std::string targetValue, int sockId) {
     bool result;
     result = sendHeader(sockId, sizeof(uint32_t) + targetValue.size(), 5);
     result = result && sendField(sockId, &size, sizeof(size), MSG_NOSIGNAL);

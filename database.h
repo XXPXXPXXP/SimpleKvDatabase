@@ -34,11 +34,11 @@ public:
 
     [[noreturn]] void taskSync(int readerFd[2], int senderFd[2]);
 
-    void putResponse(const std::string& targetKey, const std::string& targetValue, int sockID, int senderFd[2]);
+    void putResponse(const std::string targetKey, const std::string targetValue, int sockID, int senderFd[2]);
 
-    void deleteResponse(std::string &targetKey, int sockID, int senderFd[2]);
+    void deleteResponse(std::string targetKey, int sockID, int senderFd[2]);
 
-    void getResponse(std::string &targetKey, int sockID, int senderFd[2]);
+    void getResponse(std::string targetKey, int sockID, int senderFd[2]);
 
     ~database() {
         log(warning, "Force exit!\nSaving datas now....");
